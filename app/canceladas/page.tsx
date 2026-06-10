@@ -13,6 +13,7 @@ export default function CanceladasPage() {
   const [notas, setNotas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filtroMes, setFiltroMes] = useState(new Date().toISOString().slice(0, 7))
+  const [filtros, setFiltros] = useState({ numero: '', emissor: '', fazenda: '' })
 
   useEffect(() => {
     setLoading(true)
@@ -20,6 +21,17 @@ export default function CanceladasPage() {
       .then(r => r.json())
       .then(data => { setNotas(data); setLoading(false) })
   }, [filtroMes])
+
+  const notasFiltradas = notas.filter(n => {
+    if (filtros.numero && !n.numero.toLowerCase().includes(filtros.numero.toLowerCase())) return false
+    if (filtros.emissor && !n.emissor_nome.toLowerCase().includes(filtros.emissor.toLowerCase())) return false
+    if (filtros.fazenda) {
+      const faz = (n.fazenda_nome || n.ie_tomador || '').toLowerCase()
+      if (!faz.includes(filtros.fazenda.toLowerCase())) return false
+    }
+    return true
+  })
+  const temFiltro = Object.values(filtros).some(v => v !== '')
 
   return (
     <div className="p-8 max-w-6xl">
@@ -30,8 +42,8 @@ export default function CanceladasPage() {
         </p>
       </div>
 
-      {/* Filtro */}
-      <div className="flex gap-3 mb-6 items-center">
+      {/* Filtros */}
+      <div className="flex gap-2 mb-3 flex-wrap items-center">
         <input
           type="month"
           value={filtroMes}
@@ -44,12 +56,37 @@ export default function CanceladasPage() {
             onClick={() => setFiltroMes('')}
             className="text-xs text-slate-500 hover:text-slate-300 underline"
           >
-            Ver todos os períodos
+            Todos os períodos
           </button>
         )}
-        <span className="text-sm text-slate-500">
-          {loading ? 'Carregando...' : `${notas.length} nota(s)`}
+        <span className="ml-auto text-sm text-slate-500">
+          {loading ? 'Carregando...' : `${notasFiltradas.length}${temFiltro ? ` de ${notas.length}` : ''} nota(s)`}
         </span>
+      </div>
+      <div className="flex gap-2 mb-6 flex-wrap items-center">
+        {[
+          { key: 'numero', placeholder: 'Nº nota', width: 'w-28' },
+          { key: 'emissor', placeholder: 'Emissor', width: 'w-48' },
+          { key: 'fazenda', placeholder: 'Fazenda', width: 'w-36' },
+        ].map(({ key, placeholder, width }) => (
+          <input
+            key={key}
+            type="text"
+            value={filtros[key as keyof typeof filtros]}
+            onChange={e => setFiltros(prev => ({ ...prev, [key]: e.target.value }))}
+            placeholder={placeholder}
+            className={`${width} bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                        placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30`}
+          />
+        ))}
+        {temFiltro && (
+          <button
+            onClick={() => setFiltros({ numero: '', emissor: '', fazenda: '' })}
+            className="text-xs text-slate-500 hover:text-slate-300 px-2 underline"
+          >
+            Limpar filtros
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -65,14 +102,14 @@ export default function CanceladasPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
-            {!loading && notas.length === 0 && (
+            {!loading && notasFiltradas.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-slate-500 text-sm">
-                  Nenhuma nota cancelada neste período
+                  {notas.length === 0 ? 'Nenhuma nota cancelada neste período' : 'Nenhuma nota corresponde aos filtros'}
                 </td>
               </tr>
             )}
-            {notas.map((n: any) => (
+            {notasFiltradas.map((n: any) => (
               <tr key={n.id} className="hover:bg-slate-800/30 transition-colors">
                 <td className="px-4 py-3 text-sm text-white font-medium">{n.numero}</td>
                 <td className="px-4 py-3 text-xs text-slate-400 max-w-[160px] truncate" title={n.emissor_nome}>

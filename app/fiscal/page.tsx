@@ -9,6 +9,7 @@ export default function FiscalPage() {
   const [loading, setLoading] = useState(true)
   const [filtroStatus, setFiltroStatus] = useState<'todas' | 'pendente' | 'concluida'>('pendente')
   const [filtroMes, setFiltroMes] = useState(new Date().toISOString().slice(0, 7))
+  const [filtros, setFiltros] = useState({ numero: '', emissor: '', fazenda: '', dtEmissao: new Date().toISOString().slice(0, 7) })
   const [concluindo, setConcluindo] = useState<string | null>(null)
   const [estornando, setEstornando] = useState<string | null>(null)
   const [justificativa, setJustificativa] = useState('')
@@ -57,6 +58,18 @@ export default function FiscalPage() {
     carregar()
   }
 
+  const protocolosFiltrados = protocolos.filter(p => {
+    if (filtros.numero && !p.numero.toLowerCase().includes(filtros.numero.toLowerCase())) return false
+    if (filtros.emissor && !p.emissor_nome.toLowerCase().includes(filtros.emissor.toLowerCase())) return false
+    if (filtros.fazenda) {
+      const faz = (p.fazenda_nome || p.ie_tomador || '').toLowerCase()
+      if (!faz.includes(filtros.fazenda.toLowerCase())) return false
+    }
+    if (filtros.dtEmissao && !p.dt_emissao?.startsWith(filtros.dtEmissao)) return false
+    return true
+  })
+  const temFiltro = Object.values(filtros).some(v => v !== '')
+
   const canAct = (p: any) => {
     if (perfil === 'admin') return true
     if (perfil !== 'fiscal') return false
@@ -71,7 +84,7 @@ export default function FiscalPage() {
       </div>
 
       {/* Filtros */}
-      <div className="flex gap-3 mb-6 flex-wrap">
+      <div className="flex gap-3 mb-3 flex-wrap items-center">
         <input
           type="month"
           value={filtroMes}
@@ -93,8 +106,41 @@ export default function FiscalPage() {
           </button>
         ))}
         <span className="ml-auto text-sm text-slate-500 flex items-center">
-          {loading ? 'Carregando...' : `${protocolos.length} nota(s)`}
+          {loading ? 'Carregando...' : `${protocolosFiltrados.length}${temFiltro ? ` de ${protocolos.length}` : ''} nota(s)`}
         </span>
+      </div>
+      <div className="flex gap-2 mb-6 flex-wrap items-center">
+        {[
+          { key: 'numero', placeholder: 'Nº nota', width: 'w-28' },
+          { key: 'emissor', placeholder: 'Emissor', width: 'w-48' },
+          { key: 'fazenda', placeholder: 'Fazenda', width: 'w-36' },
+        ].map(({ key, placeholder, width }) => (
+          <input
+            key={key}
+            type="text"
+            value={filtros[key as keyof typeof filtros]}
+            onChange={e => setFiltros(prev => ({ ...prev, [key]: e.target.value }))}
+            placeholder={placeholder}
+            className={`${width} bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                        placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30`}
+          />
+        ))}
+        <input
+          type="month"
+          value={filtros.dtEmissao}
+          onChange={e => setFiltros(prev => ({ ...prev, dtEmissao: e.target.value }))}
+          className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                     focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+          title="Data de Emissão"
+        />
+        {temFiltro && (
+          <button
+            onClick={() => setFiltros({ numero: '', emissor: '', fazenda: '', dtEmissao: '' })}
+            className="text-xs text-slate-500 hover:text-slate-300 px-2 underline"
+          >
+            Limpar filtros
+          </button>
+        )}
       </div>
 
       {/* Modal de estorno */}
@@ -148,14 +194,14 @@ export default function FiscalPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
-            {!loading && protocolos.length === 0 && (
+            {!loading && protocolosFiltrados.length === 0 && (
               <tr>
                 <td colSpan={10} className="px-4 py-10 text-center text-slate-500 text-sm">
-                  Nenhuma nota encontrada
+                  {protocolos.length === 0 ? 'Nenhuma nota encontrada' : 'Nenhuma nota corresponde aos filtros'}
                 </td>
               </tr>
             )}
-            {protocolos.map((p: any) => (
+            {protocolosFiltrados.map((p: any) => (
               <tr key={p.id} className="hover:bg-slate-800/30 transition-colors">
                 <td className="px-4 py-3 text-sm text-white font-medium">{p.numero}</td>
                 <td className="px-4 py-3 text-xs text-slate-400 max-w-[120px] truncate" title={p.emissor_nome}>{p.emissor_nome}</td>

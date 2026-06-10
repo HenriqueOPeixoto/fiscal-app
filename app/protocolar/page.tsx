@@ -24,6 +24,7 @@ export default function ProtocolarPage() {
   const [tentouProtocolar, setTentouProtocolar] = useState(false)
   // per-nota responsável save state: null | 'saving' | 'saved'
   const [respState, setRespState] = useState<Record<string, 'saving' | 'saved'>>({})
+  const [filtros, setFiltros] = useState({ numero: '', emissor: '', fazenda: '', dtEmissao: new Date().toISOString().slice(0, 7) })
   const [cancelandoNota, setCancelandoNota] = useState<{ id: string; numero: string } | null>(null)
   const [cancelarStatus, setCancelarStatus] = useState('Cancelamento de NF-e homologado')
   const [cancelarLoading, setCancelarLoading] = useState(false)
@@ -58,6 +59,18 @@ export default function ProtocolarPage() {
     )
   }
 
+  const notasFiltradas = notas.filter(n => {
+    if (filtros.numero && !n.numero.toLowerCase().includes(filtros.numero.toLowerCase())) return false
+    if (filtros.emissor && !n.emissor_nome.toLowerCase().includes(filtros.emissor.toLowerCase())) return false
+    if (filtros.fazenda) {
+      const faz = (n.fazenda_nome || n.ie_tomador || '').toLowerCase()
+      if (!faz.includes(filtros.fazenda.toLowerCase())) return false
+    }
+    if (filtros.dtEmissao && !n.dt_emissao?.startsWith(filtros.dtEmissao)) return false
+    return true
+  })
+  const temFiltro = Object.values(filtros).some(v => v !== '')
+
   function getExtra(notaId: string): ExtraFields {
     return extraFields[notaId] ?? emptyExtra()
   }
@@ -80,11 +93,12 @@ export default function ProtocolarPage() {
   }
 
   function toggleAll() {
-    if (selecionadas.size === notas.length) {
-      setSelecionadas(new Set())
-    } else {
-      setSelecionadas(new Set(notas.map(n => n.id)))
-    }
+    const ids = notasFiltradas.map(n => n.id)
+    const allChecked = ids.every(id => selecionadas.has(id))
+    const next = new Set(selecionadas)
+    if (allChecked) ids.forEach(id => next.delete(id))
+    else ids.forEach(id => next.add(id))
+    setSelecionadas(next)
   }
 
   const selecionadasSemForma = Array.from(selecionadas).filter(
@@ -177,6 +191,46 @@ export default function ProtocolarPage() {
         </div>
       </div>
 
+      {/* Filtros */}
+      <div className="flex gap-2 mb-4 flex-wrap items-end">
+        {[
+          { key: 'numero', placeholder: 'Nº nota', width: 'w-28' },
+          { key: 'emissor', placeholder: 'Emissor', width: 'w-48' },
+          { key: 'fazenda', placeholder: 'Fazenda', width: 'w-36' },
+        ].map(({ key, placeholder, width }) => (
+          <input
+            key={key}
+            type="text"
+            value={filtros[key as keyof typeof filtros]}
+            onChange={e => setFiltros(prev => ({ ...prev, [key]: e.target.value }))}
+            placeholder={placeholder}
+            className={`${width} bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                        placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30`}
+          />
+        ))}
+        <input
+          type="month"
+          value={filtros.dtEmissao}
+          onChange={e => setFiltros(prev => ({ ...prev, dtEmissao: e.target.value }))}
+          className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                     focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+          title="Data de Emissão"
+        />
+        {temFiltro && (
+          <button
+            onClick={() => setFiltros({ numero: '', emissor: '', fazenda: '', dtEmissao: '' })}
+            className="text-xs text-slate-500 hover:text-slate-300 px-2 underline"
+          >
+            Limpar filtros
+          </button>
+        )}
+        {temFiltro && (
+          <span className="text-sm text-slate-500 ml-auto">
+            {notasFiltradas.length} de {notas.length} nota(s)
+          </span>
+        )}
+      </div>
+
       {resultado && (
         <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm rounded-lg px-4 py-3 mb-4">
           ✓ {resultado}
@@ -188,22 +242,22 @@ export default function ProtocolarPage() {
         <div className="px-5 py-3 border-b border-slate-800 flex items-center gap-3">
           <input
             type="checkbox"
-            checked={selecionadas.size === notas.length && notas.length > 0}
+            checked={notasFiltradas.length > 0 && notasFiltradas.every(n => selecionadas.has(n.id))}
             onChange={toggleAll}
             className="w-4 h-4 accent-emerald-500"
           />
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-            {loading ? 'Carregando...' : `${notas.length} notas sem protocolo`}
+            {loading ? 'Carregando...' : `${notasFiltradas.length} notas sem protocolo`}
           </span>
         </div>
 
-        {!loading && notas.length === 0 ? (
+        {!loading && notasFiltradas.length === 0 ? (
           <div className="p-10 text-center text-slate-500 text-sm">
-            Nenhuma nota pendente de protocolo
+            {notas.length === 0 ? 'Nenhuma nota pendente de protocolo' : 'Nenhuma nota corresponde aos filtros'}
           </div>
         ) : (
           <div className="divide-y divide-slate-800">
-            {notas.map((nota: any) => {
+            {notasFiltradas.map((nota: any) => {
               const extra = getExtra(nota.id)
               const checked = selecionadas.has(nota.id)
               const formaInvalida = tentouProtocolar && checked && !extra.formaPagamento.trim()
