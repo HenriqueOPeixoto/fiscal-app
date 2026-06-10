@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String   @unique
+  senha     String
+  perfil    String
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now())
+
+  notasImportadas   Nota[]             @relation("ImportadoPor")
+  protocolos        Protocolo[]        @relation("CriadoPor")
+  lancamentos       LancamentoFiscal[] @relation("FiscalResponsavel")
+}
+
+model Fazenda {
+  id        String  @id @default(cuid())
+  ieTomador String  @unique
+  nome      String
+  notas     Nota[]
+}
+
+model Nota {
+  id           String   @id @default(cuid())
+  numero       String
+  valor        Float
+  emissorNome  String
+  ieTomador    String
+  dtEmissao    DateTime
+  importadoEm  DateTime @default(now())
+  importadoPorId String
+  
+  importadoPor   Usuario  @relation("ImportadoPor", fields: [importadoPorId], references: [id])
+  fazenda        Fazenda? @relation(fields: [ieTomador], references: [ieTomador])
+  protocolo      Protocolo?
+  
+  @@unique([numero, ieTomador])
+}
+
+model Protocolo {
+  id                   String   @id @default(cuid())
+  dataRecebimento      DateTime
+  responsavelFormaPag  String?
+  criadoEm             DateTime @default(now())
+  notaId               String   @unique
+  criadoPorId          String
+  
+  nota       Nota    @relation(fields: [notaId], references: [id])
+  criadoPor  Usuario @relation("CriadoPor", fields: [criadoPorId], references: [id])
+  lancamento LancamentoFiscal?
+}
+
+model LancamentoFiscal {
+  id             String    @id @default(cuid())
+  formaPagamento String?
+  concluida      Boolean   @default(false)
+  concluidaEm    DateTime?
+  identificada   Boolean   @default(false)
+  pedidos        String?
+  vencimento     DateTime?
+  anotacoes      String?
+  criadoEm       DateTime  @default(now())
+  atualizadoEm   DateTime  @updatedAt
+  protocoloId    String    @unique
+  responsavelId  String
+
+  protocolo   Protocolo @relation(fields: [protocoloId], references: [id])
+  responsavel Usuario   @relation("FiscalResponsavel", fields: [responsavelId], references: [id])
+}
