@@ -28,15 +28,32 @@ export async function POST(req: NextRequest) {
 
   const userId = (session.user as any).id
   let importadas = 0
+  let canceladas = 0
   let ignoradas = 0
   const erros: string[] = []
+
+  // Debug: collect column names and unique status values seen
+  const colunas = rows.length > 0 ? Object.keys(rows[0]) : []
+  const statusVistos = new Set<string>()
+
+  const STATUS_CANCELADO = [
+    'Cancelamento de NF-e homologado',
+    'NFS-e de Substituição Gerada',
+  ]
 
   for (const row of rows) {
     const numero = String(row['Num'] || '').trim()
     const valor = parseFloat(String(row['Valor'] || '0').replace(',', '.'))
     const emissorNome = String(row['Emissor Nome'] || '').trim()
+    const cnpjEmissor = String(row['Emissor CNPJ/CPF'] || '').replace(/\D/g, '')
     const ieTomador = String(row['Tomador IE'] || '').trim()
     const dtEmissaoRaw = row['DtEmi']
+    // Fiscal.io exports two Status columns; SheetJS renames the second to Status_1.
+    // The cancellation status lives in Status_1 when present, otherwise Status.
+    const rawStatus1 = String(row['Status_1'] || '').trim()
+    const rawStatus = String(row['Status'] || '').trim()
+    const status = STATUS_CANCELADO.includes(rawStatus1) ? rawStatus1 : rawStatus
+    statusVistos.add(status || `(vazio — Status="${rawStatus}" Status_1="${rawStatus1}")`)
 
     if (!numero || !emissorNome || !ieTomador) {
       ignoradas++
@@ -49,24 +66,32 @@ export async function POST(req: NextRequest) {
       const date = XLSX.SSF.parse_date_code(dtEmissaoRaw)
       dtEmissao = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
     } else {
-      // Format: 2026.06.02 -> 2026-06-02
       dtEmissao = String(dtEmissaoRaw || '').replace(/\./g, '-')
     }
 
     try {
-      await client.execute({
-        sql: `INSERT OR IGNORE INTO notas (id, numero, valor, emissor_nome, ie_tomador, dt_emissao, importado_por_id)
-              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        args: [randomUUID(), numero, valor, emissorNome, ieTomador, dtEmissao, userId],
-      })
-      importadas++
+      if (STATUS_CANCELADO.includes(status)) {
+        await client.execute({
+          sql: `INSERT OR IGNORE INTO notas_canceladas (id, numero, valor, emissor_nome, cnpj_emissor, ie_tomador, dt_emissao, status, importado_por_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, ieTomador, dtEmissao, status, userId],
+        })
+        canceladas++
+      } else {
+        await client.execute({
+          sql: `INSERT OR IGNORE INTO notas (id, numero, valor, emissor_nome, cnpj_emissor, ie_tomador, dt_emissao, importado_por_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, ieTomador, dtEmissao, userId],
+        })
+        importadas++
+      }
     } catch (e: any) {
       erros.push(`Nota ${numero}: ${e.message}`)
       ignoradas++
     }
   }
 
-  return NextResponse.json({ importadas, ignoradas, erros })
+  return NextResponse.json({ importadas, canceladas, ignoradas, erros, debug: { colunas, statusVistos: [...statusVistos] } })
 }
 
 export async function GET(req: NextRequest) {

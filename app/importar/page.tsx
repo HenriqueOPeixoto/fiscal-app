@@ -57,7 +57,7 @@ export default function ImportarPage() {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
         <h3 className="text-sm font-semibold text-slate-300 mb-3">Colunas utilizadas do Fiscal.io</h3>
         <div className="grid grid-cols-2 gap-2">
-          {['Num', 'Valor', 'Emissor Nome', 'Tomador IE', 'DtEmi'].map(col => (
+          {['Num', 'Valor', 'Emissor Nome', 'Emissor CNPJ/CPF', 'Tomador IE', 'DtEmi', 'Status'].map(col => (
             <div key={col} className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
               <span className="text-xs text-slate-400 font-mono">{col}</span>
@@ -65,7 +65,7 @@ export default function ImportarPage() {
           ))}
         </div>
         <p className="text-xs text-slate-500 mt-3">
-          Notas já existentes (mesmo número + IE) serão ignoradas automaticamente.
+          Notas já existentes (mesmo número + CNPJ/CPF emissor + IE) serão ignoradas automaticamente.
         </p>
       </div>
 
@@ -151,17 +151,53 @@ export default function ImportarPage() {
                 <p className="text-slate-300">
                   <span className="text-white font-medium">{resultado.importadas}</span> notas importadas
                 </p>
+                {resultado.canceladas > 0 && (
+                  <p className="text-slate-300">
+                    <span className="text-amber-400 font-medium">{resultado.canceladas}</span> notas canceladas/substituídas
+                  </p>
+                )}
                 <p className="text-slate-400">
                   <span className="text-slate-300">{resultado.ignoradas}</span> ignoradas (já existiam ou inválidas)
                 </p>
               </div>
-              {resultado.importadas > 0 && (
-                <button
-                  onClick={() => router.push('/protocolar')}
-                  className="mt-3 text-xs text-emerald-400 hover:text-emerald-300 underline"
-                >
-                  Ir para Protocolar →
-                </button>
+              <div className="flex gap-3 mt-3">
+                {resultado.importadas > 0 && (
+                  <button
+                    onClick={() => router.push('/protocolar')}
+                    className="text-xs text-emerald-400 hover:text-emerald-300 underline"
+                  >
+                    Ir para Protocolar →
+                  </button>
+                )}
+                {resultado.canceladas > 0 && (
+                  <button
+                    onClick={() => router.push('/canceladas')}
+                    className="text-xs text-amber-400 hover:text-amber-300 underline"
+                  >
+                    Ver Canceladas →
+                  </button>
+                )}
+              </div>
+              {resultado.debug && (
+                <details className="mt-4">
+                  <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
+                    Diagnóstico (expandir)
+                  </summary>
+                  <div className="mt-2 p-3 bg-slate-950 rounded-lg space-y-2">
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Colunas lidas do arquivo:</p>
+                      <p className="text-xs text-slate-300 font-mono break-all">
+                        {resultado.debug.colunas.join(' | ')}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Valores de Status encontrados:</p>
+                      {resultado.debug.statusVistos.map((s: string) => (
+                        <p key={s} className="text-xs text-slate-300 font-mono">"{s}"</p>
+                      ))}
+                    </div>
+                  </div>
+                </details>
               )}
             </div>
           )}

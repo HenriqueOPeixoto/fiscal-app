@@ -24,6 +24,9 @@ export default function ProtocolarPage() {
   const [tentouProtocolar, setTentouProtocolar] = useState(false)
   // per-nota responsável save state: null | 'saving' | 'saved'
   const [respState, setRespState] = useState<Record<string, 'saving' | 'saved'>>({})
+  const [cancelandoNota, setCancelandoNota] = useState<{ id: string; numero: string } | null>(null)
+  const [cancelarStatus, setCancelarStatus] = useState('Cancelamento de NF-e homologado')
+  const [cancelarLoading, setCancelarLoading] = useState(false)
 
   const perfil = (session?.user as any)?.perfil
 
@@ -88,6 +91,20 @@ export default function ProtocolarPage() {
     id => !getExtra(id).formaPagamento.trim()
   )
   const podeProtocolar = selecionadas.size > 0 && selecionadasSemForma.length === 0
+
+  async function confirmarCancelar() {
+    if (!cancelandoNota) return
+    setCancelarLoading(true)
+    await fetch(`/api/notas/${cancelandoNota.id}/cancelar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: cancelarStatus }),
+    })
+    setCancelandoNota(null)
+    setCancelarLoading(false)
+    setSelecionadas(prev => { const n = new Set(prev); n.delete(cancelandoNota.id); return n })
+    await carregarNotas()
+  }
 
   async function handleProtocolar() {
     setTentouProtocolar(true)
@@ -228,6 +245,14 @@ export default function ProtocolarPage() {
                       <p className="text-xs text-slate-500">{nota.dt_emissao?.slice(0, 10)}</p>
                     </div>
                   </label>
+                  <div className="mt-1 ml-8 flex justify-end">
+                    <button
+                      onClick={() => { setCancelandoNota({ id: nota.id, numero: nota.numero }); setCancelarStatus('Cancelamento de NF-e homologado') }}
+                      className="text-xs text-slate-600 hover:text-red-400 transition-colors"
+                    >
+                      Marcar como cancelada
+                    </button>
+                  </div>
 
                   {/* Estorno warning */}
                   {nota.estorno_justificativa && (
@@ -316,6 +341,49 @@ export default function ProtocolarPage() {
           </div>
         )}
       </div>
+      {/* Modal: cancelar nota */}
+      {cancelandoNota && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-white font-semibold text-base mb-1">Cancelar nota</h3>
+            <p className="text-slate-400 text-sm mb-5">
+              NF <span className="text-white font-medium">{cancelandoNota.numero}</span> será movida para a tela de Canceladas.
+            </p>
+            <p className="text-xs font-medium text-slate-400 mb-2">Motivo do cancelamento</p>
+            <div className="space-y-2 mb-6">
+              {['Cancelamento de NF-e homologado', 'NFS-e de Substituição Gerada'].map(opt => (
+                <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="cancelar-status"
+                    value={opt}
+                    checked={cancelarStatus === opt}
+                    onChange={() => setCancelarStatus(opt)}
+                    className="accent-emerald-500"
+                  />
+                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">{opt}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setCancelandoNota(null)}
+                disabled={cancelarLoading}
+                className="px-4 py-2 text-sm text-slate-400 hover:text-white border border-slate-700 hover:border-slate-600 rounded-lg transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarCancelar}
+                disabled={cancelarLoading}
+                className="px-4 py-2 text-sm bg-red-500/80 hover:bg-red-500 disabled:opacity-50 text-white font-semibold rounded-lg transition-all"
+              >
+                {cancelarLoading ? 'Movendo...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

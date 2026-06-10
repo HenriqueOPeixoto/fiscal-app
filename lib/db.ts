@@ -32,6 +32,7 @@ export async function initDB() {
       numero TEXT NOT NULL,
       valor REAL NOT NULL,
       emissor_nome TEXT NOT NULL,
+      cnpj_emissor TEXT NOT NULL DEFAULT '',
       ie_tomador TEXT NOT NULL,
       dt_emissao TEXT NOT NULL,
       importado_em TEXT NOT NULL DEFAULT (datetime('now')),
@@ -40,7 +41,7 @@ export async function initDB() {
       estorno_justificativa TEXT,
       estorno_em TEXT,
       estornada_por TEXT,
-      UNIQUE(numero, ie_tomador)
+      UNIQUE(numero, ie_tomador, cnpj_emissor)
     );
 
     CREATE TABLE IF NOT EXISTS protocolos (
@@ -53,6 +54,20 @@ export async function initDB() {
       vencimento TEXT,
       criado_em TEXT NOT NULL DEFAULT (datetime('now')),
       criado_por_id TEXT NOT NULL REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS notas_canceladas (
+      id TEXT PRIMARY KEY,
+      numero TEXT NOT NULL,
+      valor REAL NOT NULL,
+      emissor_nome TEXT NOT NULL,
+      cnpj_emissor TEXT NOT NULL DEFAULT '',
+      ie_tomador TEXT NOT NULL,
+      dt_emissao TEXT NOT NULL,
+      status TEXT NOT NULL,
+      importado_em TEXT NOT NULL DEFAULT (datetime('now')),
+      importado_por_id TEXT NOT NULL REFERENCES usuarios(id),
+      UNIQUE(numero, ie_tomador, cnpj_emissor)
     );
 
     CREATE TABLE IF NOT EXISTS lancamentos_fiscal (
@@ -71,16 +86,75 @@ export async function initDB() {
     );
   `)
 
-  // Migrations for existing databases
+  // Migrations: simple column additions
   for (const col of ['forma_pagamento', 'pedidos', 'vencimento']) {
-    try {
-      await client.execute(`ALTER TABLE protocolos ADD COLUMN ${col} TEXT`)
-    } catch {}
+    try { await client.execute(`ALTER TABLE protocolos ADD COLUMN ${col} TEXT`) } catch {}
   }
   for (const col of ['responsavel_pagamento', 'estorno_justificativa', 'estorno_em', 'estornada_por']) {
-    try {
-      await client.execute(`ALTER TABLE notas ADD COLUMN ${col} TEXT`)
-    } catch {}
+    try { await client.execute(`ALTER TABLE notas ADD COLUMN ${col} TEXT`) } catch {}
+  }
+
+  // Migration: add cnpj_emissor to notas (requires table recreation to change UNIQUE constraint)
+  const notasCols = await client.execute(`PRAGMA table_info(notas)`)
+  const notasHasCnpj = (notasCols.rows as any[]).some(r => r.name === 'cnpj_emissor')
+  if (!notasHasCnpj) {
+    await client.execute(`PRAGMA foreign_keys = OFF`)
+    await client.executeMultiple(`
+      ALTER TABLE notas RENAME TO notas_v1;
+
+      CREATE TABLE notas (
+        id TEXT PRIMARY KEY,
+        numero TEXT NOT NULL,
+        valor REAL NOT NULL,
+        emissor_nome TEXT NOT NULL,
+        cnpj_emissor TEXT NOT NULL DEFAULT '',
+        ie_tomador TEXT NOT NULL,
+        dt_emissao TEXT NOT NULL,
+        importado_em TEXT NOT NULL DEFAULT (datetime('now')),
+        importado_por_id TEXT NOT NULL REFERENCES usuarios(id),
+        responsavel_pagamento TEXT,
+        estorno_justificativa TEXT,
+        estorno_em TEXT,
+        estornada_por TEXT,
+        UNIQUE(numero, ie_tomador, cnpj_emissor)
+      );
+
+      INSERT INTO notas
+        (id, numero, valor, emissor_nome, cnpj_emissor, ie_tomador, dt_emissao,
+         importado_em, importado_por_id,
+         responsavel_pagamento, estorno_justificativa, estorno_em, estornada_por)
+      SELECT
+        id, numero, valor, emissor_nome, '' AS cnpj_emissor, ie_tomador, dt_emissao,
+        importado_em, importado_por_id,
+        responsavel_pagamento, estorno_justificativa, estorno_em, estornada_por
+      FROM notas_v1;
+
+      DROP TABLE notas_v1;
+    `)
+    await client.execute(`PRAGMA foreign_keys = ON`)
+  }
+
+  // Migration: add cnpj_emissor to notas_canceladas (safe to recreate — rarely has critical data)
+  const cancelCols = await client.execute(`PRAGMA table_info(notas_canceladas)`)
+  const cancelHasCnpj = (cancelCols.rows as any[]).some(r => r.name === 'cnpj_emissor')
+  if (!cancelHasCnpj) {
+    await client.executeMultiple(`
+      DROP TABLE IF EXISTS notas_canceladas;
+
+      CREATE TABLE notas_canceladas (
+        id TEXT PRIMARY KEY,
+        numero TEXT NOT NULL,
+        valor REAL NOT NULL,
+        emissor_nome TEXT NOT NULL,
+        cnpj_emissor TEXT NOT NULL DEFAULT '',
+        ie_tomador TEXT NOT NULL,
+        dt_emissao TEXT NOT NULL,
+        status TEXT NOT NULL,
+        importado_em TEXT NOT NULL DEFAULT (datetime('now')),
+        importado_por_id TEXT NOT NULL REFERENCES usuarios(id),
+        UNIQUE(numero, ie_tomador, cnpj_emissor)
+      );
+    `)
   }
 }
 
