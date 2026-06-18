@@ -40,7 +40,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   await client.execute({ sql: `DELETE FROM protocolos WHERE nota_id = ?`, args: [id] })
   await client.execute({ sql: `DELETE FROM notas WHERE id = ?`, args: [id] })
 
-  const userName = session.user?.name || (session.user as any).id
+  const userId = (session.user as any).id
+  const userName = session.user?.name || userId
   await log(userId, userName, 'nota_cancelada',
     `Cancelou NF ${nota.numero} — ${nota.emissor_nome} (motivo: ${status})`)
 

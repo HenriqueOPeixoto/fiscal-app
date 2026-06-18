@@ -151,15 +151,15 @@ export default function FazendasPage() {
                 <>
                   <input
                     type="text"
-                    value={editando.nome}
-                    onChange={e => setEditando({ ...editando, nome: e.target.value })}
+                    value={editando!.nome}
+                    onChange={e => setEditando({ ...editando!, nome: e.target.value })}
                     className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5 w-52
                                focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                   />
                   <input
                     type="text"
-                    value={editando.ieTomador}
-                    onChange={e => setEditando({ ...editando, ieTomador: e.target.value })}
+                    value={editando!.ieTomador}
+                    onChange={e => setEditando({ ...editando!, ieTomador: e.target.value })}
                     className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-1.5 w-40
                                focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                   />

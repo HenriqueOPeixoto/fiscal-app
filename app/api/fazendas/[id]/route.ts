@@ -23,8 +23,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       sql: 'UPDATE fazendas SET nome = ?, ie_tomador = ? WHERE id = ?',
       args: [nome.trim(), ieTomador.trim(), id],
     })
-    const adminName = session.user?.name || (session.user as any).id
-    await log((session.user as any).id, adminName, 'fazenda_atualizada',
+    const adminName = session!.user?.name || (session!.user as any).id
+    await log((session!.user as any).id, adminName, 'fazenda_atualizada',
       `Editou fazenda "${nome.trim()}" (IE: ${ieTomador.trim()})`)
     return NextResponse.json({ ok: true })
   } catch (e: any) {
@@ -43,8 +43,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const fazenda = await client.execute({ sql: 'SELECT nome, ie_tomador FROM fazendas WHERE id = ?', args: [id] })
   await client.execute({ sql: 'DELETE FROM fazendas WHERE id = ?', args: [id] })
   const f = (fazenda.rows[0] as any) || {}
-  const adminName = session.user?.name || (session.user as any).id
-  await log((session.user as any).id, adminName, 'fazenda_excluida',
+  const adminName = session!.user?.name || (session!.user as any).id
+  await log((session!.user as any).id, adminName, 'fazenda_excluida',
     `Excluiu fazenda "${f.nome}" (IE: ${f.ie_tomador})`)
   return NextResponse.json({ ok: true })
 }
