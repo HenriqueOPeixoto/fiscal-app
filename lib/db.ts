@@ -107,6 +107,20 @@ export async function initDB() {
     )
   `)
 
+  // Recovery: if a previous migration left notas_v1 behind, restore it
+  const v1Check = await client.execute(`SELECT name FROM sqlite_master WHERE type='table' AND name='notas_v1'`)
+  if (v1Check.rows.length > 0) {
+    const notasCount = await client.execute(`SELECT COUNT(*) as n FROM notas`)
+    if ((notasCount.rows[0] as any).n === 0) {
+      await client.execute(`PRAGMA foreign_keys = OFF`)
+      await client.execute(`DROP TABLE notas`)
+      await client.execute(`ALTER TABLE notas_v1 RENAME TO notas`)
+      await client.execute(`PRAGMA foreign_keys = ON`)
+    } else {
+      await client.execute(`DROP TABLE notas_v1`)
+    }
+  }
+
   // Migrations: simple column additions
   for (const col of ['forma_pagamento', 'pedidos', 'vencimento']) {
     try { await client.execute(`ALTER TABLE protocolos ADD COLUMN ${col} TEXT`) } catch {}
@@ -115,68 +129,9 @@ export async function initDB() {
     try { await client.execute(`ALTER TABLE notas ADD COLUMN ${col} TEXT`) } catch {}
   }
 
-  // Migration: add cnpj_emissor to notas (requires table recreation to change UNIQUE constraint)
-  const notasCols = await client.execute(`PRAGMA table_info(notas)`)
-  const notasHasCnpj = (notasCols.rows as any[]).some(r => r.name === 'cnpj_emissor')
-  if (!notasHasCnpj) {
-    await client.execute(`PRAGMA foreign_keys = OFF`)
-    await client.executeMultiple(`
-      ALTER TABLE notas RENAME TO notas_v1;
-
-      CREATE TABLE notas (
-        id TEXT PRIMARY KEY,
-        numero TEXT NOT NULL,
-        valor REAL NOT NULL,
-        emissor_nome TEXT NOT NULL,
-        cnpj_emissor TEXT NOT NULL DEFAULT '',
-        ie_tomador TEXT NOT NULL,
-        dt_emissao TEXT NOT NULL,
-        importado_em TEXT NOT NULL DEFAULT (datetime('now')),
-        importado_por_id TEXT NOT NULL REFERENCES usuarios(id),
-        responsavel_pagamento TEXT,
-        estorno_justificativa TEXT,
-        estorno_em TEXT,
-        estornada_por TEXT,
-        UNIQUE(numero, ie_tomador, cnpj_emissor)
-      );
-
-      INSERT INTO notas
-        (id, numero, valor, emissor_nome, cnpj_emissor, ie_tomador, dt_emissao,
-         importado_em, importado_por_id,
-         responsavel_pagamento, estorno_justificativa, estorno_em, estornada_por)
-      SELECT
-        id, numero, valor, emissor_nome, '' AS cnpj_emissor, ie_tomador, dt_emissao,
-        importado_em, importado_por_id,
-        responsavel_pagamento, estorno_justificativa, estorno_em, estornada_por
-      FROM notas_v1;
-
-      DROP TABLE notas_v1;
-    `)
-    await client.execute(`PRAGMA foreign_keys = ON`)
-  }
-
-  // Migration: add cnpj_emissor to notas_canceladas (safe to recreate — rarely has critical data)
-  const cancelCols = await client.execute(`PRAGMA table_info(notas_canceladas)`)
-  const cancelHasCnpj = (cancelCols.rows as any[]).some(r => r.name === 'cnpj_emissor')
-  if (!cancelHasCnpj) {
-    await client.executeMultiple(`
-      DROP TABLE IF EXISTS notas_canceladas;
-
-      CREATE TABLE notas_canceladas (
-        id TEXT PRIMARY KEY,
-        numero TEXT NOT NULL,
-        valor REAL NOT NULL,
-        emissor_nome TEXT NOT NULL,
-        cnpj_emissor TEXT NOT NULL DEFAULT '',
-        ie_tomador TEXT NOT NULL,
-        dt_emissao TEXT NOT NULL,
-        status TEXT NOT NULL,
-        importado_em TEXT NOT NULL DEFAULT (datetime('now')),
-        importado_por_id TEXT NOT NULL REFERENCES usuarios(id),
-        UNIQUE(numero, ie_tomador, cnpj_emissor)
-      );
-    `)
-  }
+  // Migration: add cnpj_emissor if missing (new DBs already have it via CREATE TABLE above)
+  try { await client.execute(`ALTER TABLE notas ADD COLUMN cnpj_emissor TEXT NOT NULL DEFAULT ''`) } catch {}
+  try { await client.execute(`ALTER TABLE notas_canceladas ADD COLUMN cnpj_emissor TEXT NOT NULL DEFAULT ''`) } catch {}
 }
 
 export { client }
