@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { client } from '@/lib/db'
+import { log } from '@/lib/logger'
 import { randomUUID } from 'crypto'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -38,6 +39,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   })
   await client.execute({ sql: `DELETE FROM protocolos WHERE nota_id = ?`, args: [id] })
   await client.execute({ sql: `DELETE FROM notas WHERE id = ?`, args: [id] })
+
+  const userName = session.user?.name || (session.user as any).id
+  await log(userId, userName, 'nota_cancelada',
+    `Cancelou NF ${nota.numero} — ${nota.emissor_nome} (motivo: ${status})`)
 
   return NextResponse.json({ ok: true })
 }

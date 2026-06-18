@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { client } from '@/lib/db'
+import { log } from '@/lib/logger'
 import { randomUUID } from 'crypto'
 
 export async function POST(req: NextRequest) {
@@ -45,6 +46,9 @@ export async function POST(req: NextRequest) {
       args: [concluida ? 1 : 0, concluidaEm, now, lancamento.id],
     })
 
+    const userName = session.user?.name || userId
+    await log(userId, userName, 'lancamento_atualizado',
+      concluida ? `Concluiu lançamento (protocolo ${protocoloId})` : `Desmarcou conclusão (protocolo ${protocoloId})`)
     return NextResponse.json({ id: lancamento.id, updated: true })
   }
 
@@ -59,5 +63,8 @@ export async function POST(req: NextRequest) {
     args: [id, protocoloId, concluida ? 1 : 0, concluidaEm, userId, now, now],
   })
 
+  const userName = session.user?.name || userId
+  await log(userId, userName, 'lancamento_atualizado',
+    concluida ? `Concluiu lançamento (protocolo ${protocoloId})` : `Registrou lançamento (protocolo ${protocoloId})`)
   return NextResponse.json({ id, created: true })
 }

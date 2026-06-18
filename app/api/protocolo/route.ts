@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { client } from '@/lib/db'
+import { log } from '@/lib/logger'
 import { randomUUID } from 'crypto'
 
 export async function POST(req: NextRequest) {
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   // Check if nota exists
   const nota = await client.execute({
-    sql: `SELECT id FROM notas WHERE id = ?`,
+    sql: `SELECT id, numero, emissor_nome FROM notas WHERE id = ?`,
     args: [notaId],
   })
   if (!nota.rows.length) {
@@ -56,6 +57,11 @@ export async function POST(req: NextRequest) {
     sql: `UPDATE notas SET estorno_justificativa = NULL, estorno_em = NULL, estornada_por = NULL WHERE id = ?`,
     args: [notaId],
   })
+
+  const notaRow = nota.rows[0] as any
+  const userName = session.user?.name || userId
+  await log(userId, userName, 'protocolo_criado',
+    `Protocolou NF ${notaRow.numero} — ${notaRow.emissor_nome}`)
 
   return NextResponse.json({ id, success: true })
 }

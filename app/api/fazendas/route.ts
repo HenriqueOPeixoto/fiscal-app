@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { client } from '@/lib/db'
+import { log } from '@/lib/logger'
 import { randomUUID } from 'crypto'
 
 export async function GET(req: NextRequest) {
@@ -29,6 +30,9 @@ export async function POST(req: NextRequest) {
       sql: 'INSERT INTO fazendas (id, nome, ie_tomador) VALUES (?, ?, ?)',
       args: [randomUUID(), nome.trim(), ieTomador.trim()],
     })
+    const adminName = session.user?.name || (session.user as any).id
+    await log((session.user as any).id, adminName, 'fazenda_criada',
+      `Cadastrou fazenda "${nome.trim()}" (IE: ${ieTomador.trim()})`)
     return NextResponse.json({ ok: true })
   } catch (e: any) {
     if (e.message?.includes('UNIQUE')) {

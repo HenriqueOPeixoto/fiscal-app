@@ -84,6 +84,27 @@ export async function initDB() {
       atualizado_em TEXT NOT NULL DEFAULT (datetime('now')),
       responsavel_id TEXT NOT NULL REFERENCES usuarios(id)
     );
+
+    CREATE TABLE IF NOT EXISTS logs (
+      id TEXT PRIMARY KEY,
+      usuario_id TEXT NOT NULL,
+      usuario_nome TEXT NOT NULL,
+      acao TEXT NOT NULL,
+      descricao TEXT NOT NULL,
+      criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `)
+
+  // Migration: logs table (separate execute to run on existing DBs)
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS logs (
+      id TEXT PRIMARY KEY,
+      usuario_id TEXT NOT NULL,
+      usuario_nome TEXT NOT NULL,
+      acao TEXT NOT NULL,
+      descricao TEXT NOT NULL,
+      criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+    )
   `)
 
   // Migrations: simple column additions

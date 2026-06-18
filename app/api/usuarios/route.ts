@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { client } from '@/lib/db'
+import { log } from '@/lib/logger'
 import { randomUUID } from 'crypto'
 import bcrypt from 'bcryptjs'
 
@@ -41,6 +42,9 @@ export async function POST(req: NextRequest) {
       sql: `INSERT INTO usuarios (id, nome, email, senha, perfil) VALUES (?, ?, ?, ?, ?)`,
       args: [id, nome, email, senhaHash, perfil],
     })
+    const adminName = session.user?.name || (session.user as any).id
+    await log((session.user as any).id, adminName, 'usuario_criado',
+      `Criou usuário ${nome} (${email}), perfil: ${perfil}`)
     return NextResponse.json({ id, success: true })
   } catch (e: any) {
     if (e.message?.includes('UNIQUE')) {
@@ -73,6 +77,15 @@ export async function PATCH(req: NextRequest) {
 
   args.push(id)
   await client.execute({ sql: `UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`, args })
+
+  const adminName = session.user?.name || (session.user as any).id
+  const desc = [
+    ativo !== undefined ? `ativo: ${ativo}` : null,
+    perfil ? `perfil: ${perfil}` : null,
+    senha ? 'senha alterada' : null,
+  ].filter(Boolean).join(', ')
+  await log((session.user as any).id, adminName, 'usuario_atualizado',
+    `Atualizou usuário #${id} (${desc})`)
 
   return NextResponse.json({ success: true })
 }

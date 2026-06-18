@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { client } from '@/lib/db'
+import { log } from '@/lib/logger'
 import { randomUUID } from 'crypto'
 import * as XLSX from 'xlsx'
 
@@ -112,6 +113,10 @@ export async function POST(req: NextRequest) {
       ignoradas++
     }
   }
+
+  const userName = session.user?.name || userId
+  await log(userId, userName, 'nota_importada',
+    `Importou ${importadas} nota(s), ${canceladas} cancelada(s), ${ignoradas} ignorada(s)`)
 
   return NextResponse.json({ importadas, canceladas, ignoradas, ignoradasLista, erros, debug: { colunas, statusVistos: [...statusVistos] } })
 }

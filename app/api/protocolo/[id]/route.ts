@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { client } from '@/lib/db'
+import { log } from '@/lib/logger'
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
@@ -25,7 +26,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   // Fetch protocolo to get nota_id
   const protocolo = await client.execute({
-    sql: `SELECT id, nota_id FROM protocolos WHERE id = ?`,
+    sql: `SELECT p.id, p.nota_id, n.numero, n.emissor_nome FROM protocolos p JOIN notas n ON n.id = p.nota_id WHERE p.id = ?`,
     args: [id],
   })
   if (!protocolo.rows.length) {
@@ -59,6 +60,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     sql: `UPDATE notas SET estorno_justificativa = ?, estorno_em = ?, estornada_por = ? WHERE id = ?`,
     args: [justificativa, now, userName, notaId],
   })
+
+  const pr = protocolo.rows[0] as any
+  await log(userId, userName, 'protocolo_estornado',
+    `Estornou NF ${pr.numero} — ${pr.emissor_nome} | Justificativa: ${justificativa}`)
 
   return NextResponse.json({ success: true })
 }
