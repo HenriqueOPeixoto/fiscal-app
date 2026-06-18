@@ -43,6 +43,12 @@ export async function POST(req: NextRequest) {
   ]
 
   for (const row of rows) {
+    const tipo = String(row['Tipo'] || '').trim()
+    if (tipo && tipo !== 'NFe') {
+      ignoradas++
+      continue
+    }
+
     const numero = String(row['Num'] || '').trim()
     const valor = parseFloat(String(row['Valor'] || '0').replace(',', '.'))
     const emissorNome = String(row['Emissor Nome'] || '').trim()
