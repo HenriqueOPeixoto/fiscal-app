@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
   let canceladas = 0
   let ignoradas = 0
   const erros: string[] = []
+  const ignoradasLista: { numero: string; emissor: string }[] = []
 
   // Debug: collect column names and unique status values seen
   const colunas = rows.length > 0 ? Object.keys(rows[0]) : []
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
 
     if (!numero || !emissorNome || !ieTomador) {
       ignoradas++
+      ignoradasLista.push({ numero: numero || '(sem número)', emissor: emissorNome || '(sem emissor)' })
       continue
     }
 
@@ -71,19 +73,21 @@ export async function POST(req: NextRequest) {
 
     try {
       if (STATUS_CANCELADO.includes(status)) {
-        await client.execute({
+        const r = await client.execute({
           sql: `INSERT OR IGNORE INTO notas_canceladas (id, numero, valor, emissor_nome, cnpj_emissor, ie_tomador, dt_emissao, status, importado_por_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, ieTomador, dtEmissao, status, userId],
         })
-        canceladas++
+        if (r.rowsAffected > 0) canceladas++
+        else { ignoradas++; ignoradasLista.push({ numero, emissor: emissorNome }) }
       } else {
-        await client.execute({
+        const r = await client.execute({
           sql: `INSERT OR IGNORE INTO notas (id, numero, valor, emissor_nome, cnpj_emissor, ie_tomador, dt_emissao, importado_por_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, ieTomador, dtEmissao, userId],
         })
-        importadas++
+        if (r.rowsAffected > 0) importadas++
+        else { ignoradas++; ignoradasLista.push({ numero, emissor: emissorNome }) }
       }
     } catch (e: any) {
       erros.push(`Nota ${numero}: ${e.message}`)
@@ -91,7 +95,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ importadas, canceladas, ignoradas, erros, debug: { colunas, statusVistos: [...statusVistos] } })
+  return NextResponse.json({ importadas, canceladas, ignoradas, ignoradasLista, erros, debug: { colunas, statusVistos: [...statusVistos] } })
 }
 
 export async function GET(req: NextRequest) {

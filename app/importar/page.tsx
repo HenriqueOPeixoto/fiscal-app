@@ -160,6 +160,21 @@ export default function ImportarPage() {
                   <span className="text-slate-300">{resultado.ignoradas}</span> ignoradas (já existiam ou inválidas)
                 </p>
               </div>
+              {resultado.ignoradasLista?.length > 0 && (
+                <details className="mt-3">
+                  <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
+                    Ver notas ignoradas ({resultado.ignoradasLista.length})
+                  </summary>
+                  <div className="mt-2 p-3 bg-slate-950 rounded-lg max-h-48 overflow-y-auto">
+                    {resultado.ignoradasLista.map((n: { numero: string; emissor: string }, i: number) => (
+                      <div key={i} className="flex gap-3 py-1 border-b border-slate-800 last:border-0">
+                        <span className="text-xs text-slate-400 font-mono w-24 flex-shrink-0">{n.numero}</span>
+                        <span className="text-xs text-slate-500 truncate">{n.emissor}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
               <div className="flex gap-3 mt-3">
                 {resultado.importadas > 0 && (
                   <button
