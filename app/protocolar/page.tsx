@@ -355,17 +355,20 @@ export default function ProtocolarPage() {
                       <label className={`block text-xs mb-1 ${formaInvalida ? 'text-red-400 font-medium' : 'text-slate-500'}`}>
                         Forma de Pagamento{formaInvalida ? ' — obrigatória' : ''}
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={extra.formaPagamento}
                         onChange={e => setExtra(nota.id, { formaPagamento: e.target.value })}
-                        placeholder="BOLETO, PIX..."
-                        className={`text-white text-xs rounded-lg px-2.5 py-1.5 w-32
-                                   placeholder:text-slate-600 focus:outline-none focus:ring-1 transition-colors
+                        className={`text-white text-xs rounded-lg px-2.5 py-1.5 w-40
+                                   focus:outline-none focus:ring-1 transition-colors
                                    ${formaInvalida
                                      ? 'bg-red-500/10 border border-red-500/50 focus:ring-red-500/50'
                                      : 'bg-slate-800 border border-slate-700 focus:ring-emerald-500/50'}`}
-                      />
+                      >
+                        <option value="">Selecionar...</option>
+                        <option value="BOLETO">BOLETO</option>
+                        <option value="PIX">PIX</option>
+                        <option value="TRANSFERÊNCIA">TRANSFERÊNCIA</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs text-slate-500 mb-1">Pedidos</label>
