@@ -42,9 +42,11 @@ export async function POST(req: NextRequest) {
     'NFS-e de Substituição Gerada',
   ]
 
-  // Load registered IEs once before the loop
+  const normalizeIE = (ie: string) => String(ie).replace(/\D/g, '').replace(/^0+/, '')
+
+  // Load registered IEs once before the loop, normalized for comparison
   const fazendasResult = await client.execute('SELECT ie_tomador FROM fazendas')
-  const iesCadastradas = new Set((fazendasResult.rows as any[]).map(r => String(r.ie_tomador)))
+  const iesCadastradas = new Set((fazendasResult.rows as any[]).map(r => normalizeIE(r.ie_tomador)))
 
   for (const row of rows) {
     const tipo = String(row['Tipo'] || '').trim()
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest) {
     const valor = parseFloat(String(row['Valor'] || '0').replace(',', '.'))
     const emissorNome = String(row['Emissor Nome'] || '').trim()
     const cnpjEmissor = String(row['Emissor CNPJ/CPF'] || '').replace(/\D/g, '')
-    const ieTomador = String(row['Tomador IE'] || '').trim()
+    const ieTomador = normalizeIE(row['Tomador IE'] || '')
     const dtEmissaoRaw = row['DtEmi']
     // Fiscal.io exports two Status columns; SheetJS renames the second to Status_1.
     // The cancellation status lives in Status_1 when present, otherwise Status.
