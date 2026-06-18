@@ -165,11 +165,19 @@ export default function ImportarPage() {
                   <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
                     Ver notas ignoradas ({resultado.ignoradasLista.length})
                   </summary>
-                  <div className="mt-2 p-3 bg-slate-950 rounded-lg max-h-48 overflow-y-auto">
-                    {resultado.ignoradasLista.map((n: { numero: string; emissor: string }, i: number) => (
-                      <div key={i} className="flex gap-3 py-1 border-b border-slate-800 last:border-0">
+                  <div className="mt-2 bg-slate-950 rounded-lg max-h-52 overflow-y-auto">
+                    <div className="flex gap-3 px-3 py-1.5 border-b border-slate-800 sticky top-0 bg-slate-950">
+                      <span className="text-xs font-semibold text-slate-600 w-24 flex-shrink-0">Nº</span>
+                      <span className="text-xs font-semibold text-slate-600 flex-1">Emissor</span>
+                      <span className="text-xs font-semibold text-slate-600 w-40 flex-shrink-0">Motivo</span>
+                    </div>
+                    {resultado.ignoradasLista.map((n: { numero: string; emissor: string; motivo: string }, i: number) => (
+                      <div key={i} className="flex gap-3 px-3 py-1.5 border-b border-slate-800/60 last:border-0">
                         <span className="text-xs text-slate-400 font-mono w-24 flex-shrink-0">{n.numero}</span>
-                        <span className="text-xs text-slate-500 truncate">{n.emissor}</span>
+                        <span className="text-xs text-slate-500 flex-1 truncate">{n.emissor}</span>
+                        <span className={`text-xs w-40 flex-shrink-0 ${
+                          n.motivo === 'Fazenda não cadastrada' ? 'text-amber-400' : 'text-slate-600'
+                        }`}>{n.motivo}</span>
                       </div>
                     ))}
                   </div>

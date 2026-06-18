@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   let canceladas = 0
   let ignoradas = 0
   const erros: string[] = []
-  const ignoradasLista: { numero: string; emissor: string }[] = []
+  const ignoradasLista: { numero: string; emissor: string; motivo: string }[] = []
 
   // Debug: collect column names and unique status values seen
   const colunas = rows.length > 0 ? Object.keys(rows[0]) : []
@@ -41,6 +41,10 @@ export async function POST(req: NextRequest) {
     'Cancelamento de NF-e homologado',
     'NFS-e de Substituição Gerada',
   ]
+
+  // Load registered IEs once before the loop
+  const fazendasResult = await client.execute('SELECT ie_tomador FROM fazendas')
+  const iesCadastradas = new Set((fazendasResult.rows as any[]).map(r => String(r.ie_tomador)))
 
   for (const row of rows) {
     const tipo = String(row['Tipo'] || '').trim()
@@ -64,7 +68,13 @@ export async function POST(req: NextRequest) {
 
     if (!numero || !emissorNome || !ieTomador) {
       ignoradas++
-      ignoradasLista.push({ numero: numero || '(sem número)', emissor: emissorNome || '(sem emissor)' })
+      ignoradasLista.push({ numero: numero || '(sem número)', emissor: emissorNome || '(sem emissor)', motivo: 'Dados inválidos' })
+      continue
+    }
+
+    if (!iesCadastradas.has(ieTomador)) {
+      ignoradas++
+      ignoradasLista.push({ numero, emissor: emissorNome, motivo: 'Fazenda não cadastrada' })
       continue
     }
 
@@ -85,7 +95,7 @@ export async function POST(req: NextRequest) {
           args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, ieTomador, dtEmissao, status, userId],
         })
         if (r.rowsAffected > 0) canceladas++
-        else { ignoradas++; ignoradasLista.push({ numero, emissor: emissorNome }) }
+        else { ignoradas++; ignoradasLista.push({ numero, emissor: emissorNome, motivo: 'Já existia' }) }
       } else {
         const r = await client.execute({
           sql: `INSERT OR IGNORE INTO notas (id, numero, valor, emissor_nome, cnpj_emissor, ie_tomador, dt_emissao, importado_por_id)
@@ -93,7 +103,7 @@ export async function POST(req: NextRequest) {
           args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, ieTomador, dtEmissao, userId],
         })
         if (r.rowsAffected > 0) importadas++
-        else { ignoradas++; ignoradasLista.push({ numero, emissor: emissorNome }) }
+        else { ignoradas++; ignoradasLista.push({ numero, emissor: emissorNome, motivo: 'Já existia' }) }
       }
     } catch (e: any) {
       erros.push(`Nota ${numero}: ${e.message}`)
