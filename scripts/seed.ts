@@ -1,6 +1,4 @@
 import { createClient } from '@libsql/client'
-import { drizzle } from 'drizzle-orm/libsql'
-import * as schema from '../lib/schema'
 import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
 
@@ -20,7 +18,6 @@ const FAZENDAS = [
 
 async function seed() {
   const client = createClient({ url: 'file:./fiscal.db' })
-  const db = drizzle(client, { schema })
 
   // Create tables
   await client.executeMultiple(`
