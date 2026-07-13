@@ -33,6 +33,7 @@ export async function initDB() {
       valor REAL NOT NULL,
       emissor_nome TEXT NOT NULL,
       cnpj_emissor TEXT NOT NULL DEFAULT '',
+      chave TEXT NOT NULL DEFAULT '',
       ie_tomador TEXT NOT NULL,
       dt_emissao TEXT NOT NULL,
       importado_em TEXT NOT NULL DEFAULT (datetime('now')),
@@ -62,6 +63,7 @@ export async function initDB() {
       valor REAL NOT NULL,
       emissor_nome TEXT NOT NULL,
       cnpj_emissor TEXT NOT NULL DEFAULT '',
+      chave TEXT NOT NULL DEFAULT '',
       ie_tomador TEXT NOT NULL,
       dt_emissao TEXT NOT NULL,
       status TEXT NOT NULL,
@@ -132,6 +134,14 @@ export async function initDB() {
   // Migration: add cnpj_emissor if missing (new DBs already have it via CREATE TABLE above)
   try { await client.execute(`ALTER TABLE notas ADD COLUMN cnpj_emissor TEXT NOT NULL DEFAULT ''`) } catch {}
   try { await client.execute(`ALTER TABLE notas_canceladas ADD COLUMN cnpj_emissor TEXT NOT NULL DEFAULT ''`) } catch {}
+
+  // Migration: add chave (NF-e access key) if missing (new DBs already have it via CREATE TABLE above)
+  try { await client.execute(`ALTER TABLE notas ADD COLUMN chave TEXT NOT NULL DEFAULT ''`) } catch {}
+  try { await client.execute(`ALTER TABLE notas_canceladas ADD COLUMN chave TEXT NOT NULL DEFAULT ''`) } catch {}
+
+  // Chave is the reliable way to detect duplicate notas — unique per note, ignoring blanks from before this column existed
+  await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_notas_chave ON notas(chave) WHERE chave != ''`)
+  await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_notas_canceladas_chave ON notas_canceladas(chave) WHERE chave != ''`)
 }
 
 export { client }

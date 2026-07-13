@@ -26,9 +26,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   await client.execute({
     sql: `INSERT OR IGNORE INTO notas_canceladas
-          (id, numero, valor, emissor_nome, cnpj_emissor, ie_tomador, dt_emissao, status, importado_por_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [randomUUID(), nota.numero, nota.valor, nota.emissor_nome, nota.cnpj_emissor,
+          (id, numero, valor, emissor_nome, cnpj_emissor, chave, ie_tomador, dt_emissao, status, importado_por_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [randomUUID(), nota.numero, nota.valor, nota.emissor_nome, nota.cnpj_emissor, nota.chave,
            nota.ie_tomador, nota.dt_emissao, status, nota.importado_por_id],
   })
 

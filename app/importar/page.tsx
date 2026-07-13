@@ -57,7 +57,7 @@ export default function ImportarPage() {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
         <h3 className="text-sm font-semibold text-slate-300 mb-3">Colunas utilizadas do Fiscal.io</h3>
         <div className="grid grid-cols-2 gap-2">
-          {['Num', 'Valor', 'Emissor Nome', 'Emissor CNPJ/CPF', 'Tomador IE', 'DtEmi', 'Status'].map(col => (
+          {['Num', 'Valor', 'Emissor Nome', 'Emissor CNPJ/CPF', 'Chave', 'Tomador IE', 'DtEmi', 'Status'].map(col => (
             <div key={col} className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
               <span className="text-xs text-slate-400 font-mono">{col}</span>
@@ -65,7 +65,7 @@ export default function ImportarPage() {
           ))}
         </div>
         <p className="text-xs text-slate-500 mt-3">
-          Notas já existentes (mesmo número + CNPJ/CPF emissor + IE) serão ignoradas automaticamente.
+          Notas já existentes (mesma Chave de acesso) serão ignoradas automaticamente.
         </p>
       </div>
 

@@ -22,6 +22,8 @@ export const notas = sqliteTable('notas', {
   numero: text('numero').notNull(),
   valor: real('valor').notNull(),
   emissorNome: text('emissor_nome').notNull(),
+  cnpjEmissor: text('cnpj_emissor').notNull().default(''),
+  chave: text('chave').notNull().default(''),
   ieTomador: text('ie_tomador').notNull(),
   dtEmissao: text('dt_emissao').notNull(),
   importadoEm: text('importado_em').notNull().default(sql`(datetime('now'))`),

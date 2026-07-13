@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   const colunas = rows.length > 0 ? Object.keys(rows[0]) : []
   const statusVistos = new Set<string>()
 
-  const COLUNAS_OBRIGATORIAS = ['Num', 'Valor', 'Emissor Nome', 'Emissor CNPJ/CPF', 'Tomador IE', 'DtEmi', 'Status']
+  const COLUNAS_OBRIGATORIAS = ['Num', 'Valor', 'Emissor Nome', 'Emissor CNPJ/CPF', 'Tomador IE', 'DtEmi', 'Status', 'Chave']
   const colunasFaltando = COLUNAS_OBRIGATORIAS.filter(c => !colunas.includes(c))
   if (colunasFaltando.length > 0) {
     return NextResponse.json({
@@ -58,6 +58,16 @@ export async function POST(req: NextRequest) {
   const fazendasResult = await client.execute('SELECT ie_tomador FROM fazendas')
   const iesCadastradas = new Set((fazendasResult.rows as any[]).map(r => normalizeIE(r.ie_tomador)))
 
+  // Chave (chave de acesso da NF-e) is the reliable way to detect a note already in the system
+  const [notasChaves, canceladasChaves] = await Promise.all([
+    client.execute(`SELECT chave FROM notas WHERE chave != ''`),
+    client.execute(`SELECT chave FROM notas_canceladas WHERE chave != ''`),
+  ])
+  const chavesExistentes = new Set([
+    ...(notasChaves.rows as any[]).map(r => r.chave),
+    ...(canceladasChaves.rows as any[]).map(r => r.chave),
+  ])
+
   for (const row of rows) {
     const tipo = String(row['Tipo'] || '').trim()
     if (tipo && tipo !== 'NFe') {
@@ -70,6 +80,7 @@ export async function POST(req: NextRequest) {
     const emissorNome = String(row['Emissor Nome'] || '').trim()
     const cnpjEmissor = String(row['Emissor CNPJ/CPF'] || '').replace(/\D/g, '')
     const ieTomador = normalizeIE(row['Tomador IE'] || '')
+    const chave = String(row['Chave'] || '').replace(/\D/g, '')
     const dtEmissaoRaw = row['DtEmi']
     // Fiscal.io exports two Status columns; SheetJS renames the second to Status_1.
     // The cancellation status lives in Status_1 when present, otherwise Status.
@@ -78,7 +89,7 @@ export async function POST(req: NextRequest) {
     const status = STATUS_CANCELADO.includes(rawStatus1) ? rawStatus1 : rawStatus
     statusVistos.add(status || `(vazio — Status="${rawStatus}" Status_1="${rawStatus1}")`)
 
-    if (!numero || !emissorNome || !ieTomador) {
+    if (!numero || !emissorNome || !ieTomador || !chave) {
       ignoradas++
       ignoradasLista.push({ numero: numero || '(sem número)', emissor: emissorNome || '(sem emissor)', motivo: 'Dados inválidos' })
       continue
@@ -87,6 +98,12 @@ export async function POST(req: NextRequest) {
     if (!iesCadastradas.has(ieTomador)) {
       ignoradas++
       ignoradasLista.push({ numero, emissor: emissorNome, motivo: 'Fazenda não cadastrada' })
+      continue
+    }
+
+    if (chavesExistentes.has(chave)) {
+      ignoradas++
+      ignoradasLista.push({ numero, emissor: emissorNome, motivo: 'Já existia' })
       continue
     }
 
@@ -102,19 +119,19 @@ export async function POST(req: NextRequest) {
     try {
       if (STATUS_CANCELADO.includes(status)) {
         const r = await client.execute({
-          sql: `INSERT OR IGNORE INTO notas_canceladas (id, numero, valor, emissor_nome, cnpj_emissor, ie_tomador, dt_emissao, status, importado_por_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, ieTomador, dtEmissao, status, userId],
+          sql: `INSERT OR IGNORE INTO notas_canceladas (id, numero, valor, emissor_nome, cnpj_emissor, chave, ie_tomador, dt_emissao, status, importado_por_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, chave, ieTomador, dtEmissao, status, userId],
         })
-        if (r.rowsAffected > 0) canceladas++
+        if (r.rowsAffected > 0) { canceladas++; chavesExistentes.add(chave) }
         else { ignoradas++; ignoradasLista.push({ numero, emissor: emissorNome, motivo: 'Já existia' }) }
       } else {
         const r = await client.execute({
-          sql: `INSERT OR IGNORE INTO notas (id, numero, valor, emissor_nome, cnpj_emissor, ie_tomador, dt_emissao, importado_por_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, ieTomador, dtEmissao, userId],
+          sql: `INSERT OR IGNORE INTO notas (id, numero, valor, emissor_nome, cnpj_emissor, chave, ie_tomador, dt_emissao, importado_por_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, chave, ieTomador, dtEmissao, userId],
         })
-        if (r.rowsAffected > 0) importadas++
+        if (r.rowsAffected > 0) { importadas++; chavesExistentes.add(chave) }
         else { ignoradas++; ignoradasLista.push({ numero, emissor: emissorNome, motivo: 'Já existia' }) }
       }
     } catch (e: any) {
