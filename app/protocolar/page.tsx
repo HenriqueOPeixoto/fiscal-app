@@ -25,6 +25,7 @@ export default function ProtocolarPage() {
   // per-nota responsável save state: null | 'saving' | 'saved'
   const [respState, setRespState] = useState<Record<string, 'saving' | 'saved'>>({})
   const [filtros, setFiltros] = useState({ numero: '', emissor: '', fazenda: '', dtEmissao: new Date().toISOString().slice(0, 7) })
+  const [somenteEstornadas, setSomenteEstornadas] = useState(false)
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' })
   const [cancelandoNota, setCancelandoNota] = useState<{ id: string; numero: string } | null>(null)
   const [cancelarStatus, setCancelarStatus] = useState('Cancelamento de NF-e homologado')
@@ -71,9 +72,10 @@ export default function ProtocolarPage() {
       if (!faz.includes(filtros.fazenda.toLowerCase())) return false
     }
     if (filtros.dtEmissao && !n.dt_emissao?.startsWith(filtros.dtEmissao)) return false
+    if (somenteEstornadas && !n.estorno_justificativa) return false
     return true
   })
-  const temFiltro = Object.values(filtros).some(v => v !== '')
+  const temFiltro = somenteEstornadas || Object.values(filtros).some(v => v !== '')
 
   function getSortValue(nota: any, key: string) {
     switch (key) {
@@ -248,9 +250,19 @@ export default function ProtocolarPage() {
                      focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
           title="Data de Emissão"
         />
+        <button
+          onClick={() => setSomenteEstornadas(prev => !prev)}
+          className={`px-3 py-2 text-sm rounded-lg border transition-all ${
+            somenteEstornadas
+              ? 'bg-red-500/10 border-red-500/30 text-red-400 font-medium'
+              : 'border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
+          }`}
+        >
+          Somente estornadas
+        </button>
         {temFiltro && (
           <button
-            onClick={() => setFiltros({ numero: '', emissor: '', fazenda: '', dtEmissao: '' })}
+            onClick={() => { setFiltros({ numero: '', emissor: '', fazenda: '', dtEmissao: '' }); setSomenteEstornadas(false) }}
             className="text-xs text-slate-500 hover:text-slate-300 px-2 underline"
           >
             Limpar filtros
