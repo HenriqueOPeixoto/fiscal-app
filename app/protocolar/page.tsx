@@ -25,6 +25,7 @@ export default function ProtocolarPage() {
   // per-nota responsável save state: null | 'saving' | 'saved'
   const [respState, setRespState] = useState<Record<string, 'saving' | 'saved'>>({})
   const [filtros, setFiltros] = useState({ numero: '', emissor: '', fazenda: '', dtEmissao: new Date().toISOString().slice(0, 7) })
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' })
   const [cancelandoNota, setCancelandoNota] = useState<{ id: string; numero: string } | null>(null)
   const [cancelarStatus, setCancelarStatus] = useState('Cancelamento de NF-e homologado')
   const [cancelarLoading, setCancelarLoading] = useState(false)
@@ -70,6 +71,39 @@ export default function ProtocolarPage() {
     return true
   })
   const temFiltro = Object.values(filtros).some(v => v !== '')
+
+  function getSortValue(nota: any, key: string) {
+    switch (key) {
+      case 'numero': return nota.numero || ''
+      case 'emissor_nome': return nota.emissor_nome || ''
+      case 'fazenda': return nota.fazenda_nome || nota.ie_tomador || ''
+      case 'valor': return Number(nota.valor) || 0
+      case 'dt_emissao': return nota.dt_emissao || ''
+      default: return ''
+    }
+  }
+
+  const notasOrdenadas = sortConfig.key
+    ? [...notasFiltradas].sort((a, b) => {
+        const av = getSortValue(a, sortConfig.key)
+        const bv = getSortValue(b, sortConfig.key)
+        const cmp = typeof av === 'number' && typeof bv === 'number'
+          ? av - bv
+          : String(av).localeCompare(String(bv), 'pt-BR')
+        return sortConfig.direction === 'asc' ? cmp : -cmp
+      })
+    : notasFiltradas
+
+  function handleSort(key: string) {
+    setSortConfig(prev => prev.key === key
+      ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+      : { key, direction: 'asc' })
+  }
+
+  function SortIcon({ column }: { column: string }) {
+    if (sortConfig.key !== column) return <span className="text-slate-600">⇕</span>
+    return <span className="text-emerald-400">{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>
+  }
 
   function getExtra(notaId: string): ExtraFields {
     return extraFields[notaId] ?? emptyExtra()
@@ -251,13 +285,53 @@ export default function ProtocolarPage() {
           </span>
         </div>
 
+        {!loading && notasFiltradas.length > 0 && (
+          <div className="px-5 py-2 border-b border-slate-800 flex items-center gap-4">
+            <div className="w-4 flex-shrink-0" />
+            <div className="flex-1 grid grid-cols-4 gap-4">
+              <button
+                onClick={() => handleSort('numero')}
+                className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-300 text-left"
+              >
+                Número <SortIcon column="numero" />
+              </button>
+              <button
+                onClick={() => handleSort('emissor_nome')}
+                className="col-span-2 flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-300 text-left"
+              >
+                Emissor <SortIcon column="emissor_nome" />
+              </button>
+              <button
+                onClick={() => handleSort('fazenda')}
+                className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-300 text-left"
+              >
+                Fazenda <SortIcon column="fazenda" />
+              </button>
+            </div>
+            <div className="text-right flex-shrink-0 w-32 flex flex-col items-end gap-0.5">
+              <button
+                onClick={() => handleSort('valor')}
+                className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-300"
+              >
+                Valor <SortIcon column="valor" />
+              </button>
+              <button
+                onClick={() => handleSort('dt_emissao')}
+                className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-300"
+              >
+                Emissão <SortIcon column="dt_emissao" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {!loading && notasFiltradas.length === 0 ? (
           <div className="p-10 text-center text-slate-500 text-sm">
             {notas.length === 0 ? 'Nenhuma nota pendente de protocolo' : 'Nenhuma nota corresponde aos filtros'}
           </div>
         ) : (
           <div className="divide-y divide-slate-800">
-            {notasFiltradas.map((nota: any) => {
+            {notasOrdenadas.map((nota: any) => {
               const extra = getExtra(nota.id)
               const checked = selecionadas.has(nota.id)
               const formaInvalida = tentouProtocolar && checked && !extra.formaPagamento.trim()
@@ -292,7 +366,7 @@ export default function ProtocolarPage() {
                         <p className="text-sm text-slate-300">{nota.fazenda_nome || nota.ie_tomador}</p>
                       </div>
                     </div>
-                    <div className="text-right flex-shrink-0">
+                    <div className="text-right flex-shrink-0 w-32">
                       <p className="text-sm font-semibold text-white">
                         {Number(nota.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </p>
