@@ -10,6 +10,7 @@ export default function FiscalPage() {
   const [filtroStatus, setFiltroStatus] = useState<'todas' | 'pendente' | 'concluida'>('pendente')
   const [filtroMes, setFiltroMes] = useState(new Date().toISOString().slice(0, 7))
   const [filtros, setFiltros] = useState({ numero: '', emissor: '', fazenda: '', dtEmissao: new Date().toISOString().slice(0, 7) })
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' })
   const [concluindo, setConcluindo] = useState<string | null>(null)
   const [estornando, setEstornando] = useState<string | null>(null)
   const [justificativa, setJustificativa] = useState('')
@@ -69,6 +70,40 @@ export default function FiscalPage() {
     return true
   })
   const temFiltro = Object.values(filtros).some(v => v !== '')
+
+  function getSortValue(p: any, key: string) {
+    switch (key) {
+      case 'numero': return p.numero || ''
+      case 'emissor_nome': return p.emissor_nome || ''
+      case 'fazenda': return p.fazenda_nome || p.ie_tomador || ''
+      case 'valor': return Number(p.valor) || 0
+      case 'data_recebimento': return p.data_recebimento || ''
+      case 'vencimento': return p.vencimento || ''
+      default: return ''
+    }
+  }
+
+  const protocolosOrdenados = sortConfig.key
+    ? [...protocolosFiltrados].sort((a, b) => {
+        const av = getSortValue(a, sortConfig.key)
+        const bv = getSortValue(b, sortConfig.key)
+        const cmp = typeof av === 'number' && typeof bv === 'number'
+          ? av - bv
+          : String(av).localeCompare(String(bv), 'pt-BR')
+        return sortConfig.direction === 'asc' ? cmp : -cmp
+      })
+    : protocolosFiltrados
+
+  function handleSort(key: string) {
+    setSortConfig(prev => prev.key === key
+      ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+      : { key, direction: 'asc' })
+  }
+
+  function SortIcon({ column }: { column: string }) {
+    if (sortConfig.key !== column) return <span className="text-slate-600">⇕</span>
+    return <span className="text-emerald-400">{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>
+  }
 
   const canAct = (p: any) => {
     if (perfil === 'admin') return true
@@ -186,9 +221,29 @@ export default function FiscalPage() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-800">
-              {['NF', 'Emissor', 'Fazenda', 'Valor', 'Data Rec.', 'Forma Pag.', 'Pedidos', 'Vencimento', 'Status', 'Ação'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  {h}
+              {[
+                { label: 'NF', key: 'numero' },
+                { label: 'Emissor', key: 'emissor_nome' },
+                { label: 'Fazenda', key: 'fazenda' },
+                { label: 'Valor', key: 'valor' },
+                { label: 'Data Rec.', key: 'data_recebimento' },
+                { label: 'Forma Pag.', key: null },
+                { label: 'Pedidos', key: null },
+                { label: 'Vencimento', key: 'vencimento' },
+                { label: 'Status', key: null },
+                { label: 'Ação', key: null },
+              ].map(({ label, key }) => (
+                <th key={label} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  {key ? (
+                    <button
+                      onClick={() => handleSort(key)}
+                      className="flex items-center gap-1 hover:text-slate-300"
+                    >
+                      {label} <SortIcon column={key} />
+                    </button>
+                  ) : (
+                    label
+                  )}
                 </th>
               ))}
             </tr>
@@ -201,7 +256,7 @@ export default function FiscalPage() {
                 </td>
               </tr>
             )}
-            {protocolosFiltrados.map((p: any) => (
+            {protocolosOrdenados.map((p: any) => (
               <tr key={p.id} className="hover:bg-slate-800/30 transition-colors">
                 <td className="px-4 py-3 text-sm text-white font-medium">{p.numero}</td>
                 <td className="px-4 py-3 text-xs text-slate-400 max-w-[120px] truncate" title={p.emissor_nome}>{p.emissor_nome}</td>
