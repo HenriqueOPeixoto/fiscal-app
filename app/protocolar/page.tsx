@@ -201,7 +201,7 @@ export default function ProtocolarPage() {
       </div>
 
       {/* Global form */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 flex gap-4 flex-wrap items-end">
+      <div className="sticky top-0 z-20 bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 flex gap-4 flex-wrap items-end shadow-lg shadow-black/20">
         <div>
           <label className="block text-xs font-medium text-slate-400 mb-1.5">Data de Recebimento</label>
           <div className="bg-slate-800/50 border border-slate-800 text-slate-300 text-sm rounded-lg px-3 py-2">
