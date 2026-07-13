@@ -17,7 +17,7 @@ export default function ProtocolarPage() {
   const [notas, setNotas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set())
-  const [dataRecebimento, setDataRecebimento] = useState(new Date().toISOString().slice(0, 10))
+  const [dataRecebimento, setDataRecebimento] = useState('')
   const [extraFields, setExtraFields] = useState<Record<string, ExtraFields>>({})
   const [salvando, setSalvando] = useState(false)
   const [resultado, setResultado] = useState<string>('')
@@ -48,7 +48,10 @@ export default function ProtocolarPage() {
     setLoading(false)
   }
 
-  useEffect(() => { carregarNotas() }, [])
+  useEffect(() => {
+    carregarNotas()
+    fetch('/api/data-servidor').then(r => r.json()).then(d => setDataRecebimento(d.hoje))
+  }, [])
 
   if (perfil === 'fiscal') {
     return (
@@ -168,7 +171,6 @@ export default function ProtocolarPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           notaId,
-          dataRecebimento,
           responsavelFormaPag: extra.responsavel || null,
           formaPagamento: extra.formaPagamento,
           pedidos: extra.pedidos || null,
@@ -200,13 +202,9 @@ export default function ProtocolarPage() {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 flex gap-4 flex-wrap items-end">
         <div>
           <label className="block text-xs font-medium text-slate-400 mb-1.5">Data de Recebimento</label>
-          <input
-            type="date"
-            value={dataRecebimento}
-            onChange={e => setDataRecebimento(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
-                       focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-          />
+          <div className="bg-slate-800/50 border border-slate-800 text-slate-300 text-sm rounded-lg px-3 py-2">
+            {dataRecebimento ? dataRecebimento.split('-').reverse().join('/') : '—'}
+          </div>
         </div>
         <div className="flex flex-col gap-1">
           <button

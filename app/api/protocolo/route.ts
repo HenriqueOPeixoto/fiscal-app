@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { client } from '@/lib/db'
 import { log } from '@/lib/logger'
+import { hojeISO } from '@/lib/date'
 import { randomUUID } from 'crypto'
 
 export async function POST(req: NextRequest) {
@@ -15,9 +16,10 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { notaId, dataRecebimento, responsavelFormaPag, formaPagamento, pedidos, vencimento } = body
+  const { notaId, responsavelFormaPag, formaPagamento, pedidos, vencimento } = body
+  const dataRecebimento = hojeISO()
 
-  if (!notaId || !dataRecebimento) {
+  if (!notaId) {
     return NextResponse.json({ error: 'Dados obrigatórios faltando' }, { status: 400 })
   }
 
