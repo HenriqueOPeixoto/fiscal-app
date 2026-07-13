@@ -143,7 +143,14 @@ export default function ImportarPage() {
             : 'bg-emerald-500/10 border-emerald-500/20'
         }`}>
           {resultado.error ? (
-            <p className="text-red-400 text-sm">{resultado.error}</p>
+            <div>
+              <p className="text-red-400 text-sm">{resultado.error}</p>
+              {resultado.debug?.colunas?.length > 0 && (
+                <p className="text-xs text-red-300/70 mt-2 font-mono break-all">
+                  Colunas encontradas no arquivo: {resultado.debug.colunas.join(' | ')}
+                </p>
+              )}
+            </div>
           ) : (
             <div>
               <p className="text-emerald-400 font-semibold text-sm mb-2">✓ Importação concluída</p>

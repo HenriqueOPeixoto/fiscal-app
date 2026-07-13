@@ -38,6 +38,15 @@ export async function POST(req: NextRequest) {
   const colunas = rows.length > 0 ? Object.keys(rows[0]) : []
   const statusVistos = new Set<string>()
 
+  const COLUNAS_OBRIGATORIAS = ['Num', 'Valor', 'Emissor Nome', 'Emissor CNPJ/CPF', 'Tomador IE', 'DtEmi', 'Status']
+  const colunasFaltando = COLUNAS_OBRIGATORIAS.filter(c => !colunas.includes(c))
+  if (colunasFaltando.length > 0) {
+    return NextResponse.json({
+      error: `Arquivo não importado: coluna(s) obrigatória(s) não encontrada(s): ${colunasFaltando.join(', ')}`,
+      debug: { colunas, statusVistos: [] },
+    }, { status: 400 })
+  }
+
   const STATUS_CANCELADO = [
     'Cancelamento de NF-e homologado',
     'NFS-e de Substituição Gerada',
