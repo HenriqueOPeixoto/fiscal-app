@@ -142,6 +142,9 @@ export async function initDB() {
   // Chave is the reliable way to detect duplicate notas — unique per note, ignoring blanks from before this column existed
   await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_notas_chave ON notas(chave) WHERE chave != ''`)
   await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_notas_canceladas_chave ON notas_canceladas(chave) WHERE chave != ''`)
+
+  // Supports "ORDER BY importado_em DESC" in /api/notas without a temp b-tree sort when the table grows large
+  await client.execute(`CREATE INDEX IF NOT EXISTS idx_notas_importado_em ON notas(importado_em)`)
 }
 
 export { client }

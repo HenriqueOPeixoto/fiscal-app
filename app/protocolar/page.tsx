@@ -35,6 +35,8 @@ export default function ProtocolarPage() {
   const [cancelarLoading, setCancelarLoading] = useState(false)
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
+  const [pagina, setPagina] = useState(1)
+  const PAGE_SIZE = 25
 
   const perfil = (session?.user as any)?.perfil
 
@@ -104,6 +106,14 @@ export default function ProtocolarPage() {
         return sortConfig.direction === 'asc' ? cmp : -cmp
       })
     : notasFiltradas
+
+  const totalPaginas = Math.max(1, Math.ceil(notasOrdenadas.length / PAGE_SIZE))
+  const paginaAtual = Math.min(pagina, totalPaginas)
+  const notasPaginadas = notasOrdenadas.slice((paginaAtual - 1) * PAGE_SIZE, paginaAtual * PAGE_SIZE)
+
+  useEffect(() => {
+    setPagina(1)
+  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.dtEmissao, somenteEstornadas, sortConfig.key, sortConfig.direction])
 
   function handleSort(key: string) {
     setSortConfig(prev => prev.key === key
@@ -404,7 +414,7 @@ export default function ProtocolarPage() {
           </div>
         ) : (
           <div className="divide-y divide-slate-800">
-            {notasOrdenadas.map((nota: any) => {
+            {notasPaginadas.map((nota: any) => {
               const extra = getExtra(nota.id)
               const checked = selecionadas.has(nota.id)
               const formaInvalida = tentouProtocolar && checked && !extra.formaPagamento.trim()
@@ -583,6 +593,32 @@ export default function ProtocolarPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {!loading && notasOrdenadas.length > PAGE_SIZE && (
+          <div className="px-5 py-3 border-t border-slate-800 flex items-center justify-between">
+            <span className="text-xs text-slate-500">
+              Página {paginaAtual} de {totalPaginas}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPagina(p => Math.max(1, p - 1))}
+                disabled={paginaAtual === 1}
+                className="px-3 py-1.5 text-xs text-slate-400 hover:text-white border border-slate-700
+                           hover:border-slate-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-all"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+                disabled={paginaAtual === totalPaginas}
+                className="px-3 py-1.5 text-xs text-slate-400 hover:text-white border border-slate-700
+                           hover:border-slate-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-all"
+              >
+                Próxima
+              </button>
+            </div>
           </div>
         )}
       </div>
