@@ -12,6 +12,18 @@ type ExtraFields = {
 
 const emptyExtra = (): ExtraFields => ({ responsavel: '', formaPagamento: '', pedidos: '', vencimento: '' })
 
+function formatDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+function primeiroDiaMesAtual(): string {
+  const d = new Date()
+  return formatDate(new Date(d.getFullYear(), d.getMonth(), 1))
+}
+function ultimoDiaMesAtual(): string {
+  const d = new Date()
+  return formatDate(new Date(d.getFullYear(), d.getMonth() + 1, 0))
+}
+
 export default function ProtocolarPage() {
   const { data: session } = useSession()
   const [notas, setNotas] = useState<any[]>([])
@@ -27,7 +39,10 @@ export default function ProtocolarPage() {
   const [fazendas, setFazendas] = useState<{ id: string; nome: string; ie_tomador: string }[]>([])
   const [ieDraft, setIeDraft] = useState<Record<string, string>>({})
   const [ieState, setIeState] = useState<Record<string, 'saving' | 'saved' | 'erro'>>({})
-  const [filtros, setFiltros] = useState({ numero: '', emissor: '', fazenda: '', dtEmissao: new Date().toISOString().slice(0, 7) })
+  const [filtros, setFiltros] = useState({
+    numero: '', emissor: '', fazenda: '',
+    dtEmissaoInicio: primeiroDiaMesAtual(), dtEmissaoFim: ultimoDiaMesAtual(),
+  })
   const [somenteEstornadas, setSomenteEstornadas] = useState(false)
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' })
   const [cancelandoNota, setCancelandoNota] = useState<{ id: string; numero: string } | null>(null)
@@ -79,7 +94,9 @@ export default function ProtocolarPage() {
       const faz = (n.fazenda_nome || n.ie_tomador || '').toLowerCase()
       if (!faz.includes(filtros.fazenda.toLowerCase())) return false
     }
-    if (filtros.dtEmissao && !n.dt_emissao?.startsWith(filtros.dtEmissao)) return false
+    const dtEmissao = n.dt_emissao?.slice(0, 10) || ''
+    if (filtros.dtEmissaoInicio && dtEmissao < filtros.dtEmissaoInicio) return false
+    if (filtros.dtEmissaoFim && dtEmissao > filtros.dtEmissaoFim) return false
     if (somenteEstornadas && !n.estorno_justificativa) return false
     return true
   })
@@ -113,7 +130,7 @@ export default function ProtocolarPage() {
 
   useEffect(() => {
     setPagina(1)
-  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.dtEmissao, somenteEstornadas, sortConfig.key, sortConfig.direction])
+  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.dtEmissaoInicio, filtros.dtEmissaoFim, somenteEstornadas, sortConfig.key, sortConfig.direction])
 
   function handleSort(key: string) {
     setSortConfig(prev => prev.key === key
@@ -315,14 +332,25 @@ export default function ProtocolarPage() {
                         placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30`}
           />
         ))}
-        <input
-          type="month"
-          value={filtros.dtEmissao}
-          onChange={e => setFiltros(prev => ({ ...prev, dtEmissao: e.target.value }))}
-          className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
-                     focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-          title="Data de Emissão"
-        />
+        <div className="flex items-center gap-1.5">
+          <input
+            type="date"
+            value={filtros.dtEmissaoInicio}
+            onChange={e => setFiltros(prev => ({ ...prev, dtEmissaoInicio: e.target.value }))}
+            className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                       focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            title="Data de Emissão (início)"
+          />
+          <span className="text-slate-600 text-xs">até</span>
+          <input
+            type="date"
+            value={filtros.dtEmissaoFim}
+            onChange={e => setFiltros(prev => ({ ...prev, dtEmissaoFim: e.target.value }))}
+            className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                       focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            title="Data de Emissão (fim)"
+          />
+        </div>
         <button
           onClick={() => setSomenteEstornadas(prev => !prev)}
           className={`px-3 py-2 text-sm rounded-lg border transition-all ${
@@ -335,7 +363,7 @@ export default function ProtocolarPage() {
         </button>
         {temFiltro && (
           <button
-            onClick={() => { setFiltros({ numero: '', emissor: '', fazenda: '', dtEmissao: '' }); setSomenteEstornadas(false) }}
+            onClick={() => { setFiltros({ numero: '', emissor: '', fazenda: '', dtEmissaoInicio: '', dtEmissaoFim: '' }); setSomenteEstornadas(false) }}
             className="text-xs text-slate-500 hover:text-slate-300 px-2 underline"
           >
             Limpar filtros
