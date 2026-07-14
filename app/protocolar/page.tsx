@@ -30,6 +30,8 @@ export default function ProtocolarPage() {
   const [cancelandoNota, setCancelandoNota] = useState<{ id: string; numero: string } | null>(null)
   const [cancelarStatus, setCancelarStatus] = useState('Cancelamento de NF-e homologado')
   const [cancelarLoading, setCancelarLoading] = useState(false)
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
 
   const perfil = (session?.user as any)?.perfil
 
@@ -191,6 +193,22 @@ export default function ProtocolarPage() {
     setSalvando(false)
   }
 
+  async function handleExcluir() {
+    setExcluindo(true)
+    let ok = 0, erros = 0
+    for (const notaId of selecionadas) {
+      const res = await fetch(`/api/notas/${notaId}`, { method: 'DELETE' })
+      if (res.ok) ok++
+      else erros++
+    }
+    setResultado(`${ok} nota(s) excluída(s)${erros ? `, ${erros} com erro` : ''}`)
+    setSelecionadas(new Set())
+    setExtraFields({})
+    setConfirmandoExclusao(false)
+    await carregarNotas()
+    setExcluindo(false)
+  }
+
   return (
     <div className="p-8 max-w-6xl">
       <div className="mb-8">
@@ -209,14 +227,24 @@ export default function ProtocolarPage() {
           </div>
         </div>
         <div className="flex flex-col gap-1">
-          <button
-            onClick={handleProtocolar}
-            disabled={!selecionadas.size || salvando}
-            className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-500/30 disabled:cursor-not-allowed
-                       text-slate-950 font-semibold rounded-lg px-5 py-2 text-sm transition-all"
-          >
-            {salvando ? 'Salvando...' : `Protocolar (${selecionadas.size})`}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleProtocolar}
+              disabled={!selecionadas.size || salvando}
+              className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-500/30 disabled:cursor-not-allowed
+                         text-slate-950 font-semibold rounded-lg px-5 py-2 text-sm transition-all"
+            >
+              {salvando ? 'Salvando...' : `Protocolar (${selecionadas.size})`}
+            </button>
+            <button
+              onClick={() => setConfirmandoExclusao(true)}
+              disabled={!selecionadas.size || salvando}
+              className="bg-red-600 hover:bg-red-500 disabled:bg-red-600/30 disabled:cursor-not-allowed
+                         text-white font-semibold rounded-lg px-5 py-2 text-sm transition-all"
+            >
+              {`Excluir (${selecionadas.size})`}
+            </button>
+          </div>
           {tentouProtocolar && selecionadasSemForma.length > 0 && (
             <p className="text-xs text-red-400">
               {selecionadasSemForma.length} nota(s) sem Forma de Pagamento definida
@@ -520,6 +548,34 @@ export default function ProtocolarPage() {
                 className="px-4 py-2 text-sm bg-red-500/80 hover:bg-red-500 disabled:opacity-50 text-white font-semibold rounded-lg transition-all"
               >
                 {cancelarLoading ? 'Movendo...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: excluir notas selecionadas */}
+      {confirmandoExclusao && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-white font-semibold text-base mb-1">Excluir notas</h3>
+            <p className="text-slate-400 text-sm mb-6">
+              {selecionadas.size} nota(s) selecionada(s) será(ão) excluída(s) permanentemente do sistema. Essa ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setConfirmandoExclusao(false)}
+                disabled={excluindo}
+                className="px-4 py-2 text-sm text-slate-400 hover:text-white border border-slate-700 hover:border-slate-600 rounded-lg transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleExcluir}
+                disabled={excluindo}
+                className="px-4 py-2 text-sm bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold rounded-lg transition-all"
+              >
+                {excluindo ? 'Excluindo...' : 'Excluir'}
               </button>
             </div>
           </div>
