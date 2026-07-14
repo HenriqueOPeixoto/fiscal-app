@@ -24,6 +24,9 @@ export default function ProtocolarPage() {
   const [tentouProtocolar, setTentouProtocolar] = useState(false)
   // per-nota responsável save state: null | 'saving' | 'saved'
   const [respState, setRespState] = useState<Record<string, 'saving' | 'saved'>>({})
+  const [fazendas, setFazendas] = useState<{ id: string; nome: string; ie_tomador: string }[]>([])
+  const [ieDraft, setIeDraft] = useState<Record<string, string>>({})
+  const [ieState, setIeState] = useState<Record<string, 'saving' | 'saved' | 'erro'>>({})
   const [filtros, setFiltros] = useState({ numero: '', emissor: '', fazenda: '', dtEmissao: new Date().toISOString().slice(0, 7) })
   const [somenteEstornadas, setSomenteEstornadas] = useState(false)
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' })
@@ -54,6 +57,7 @@ export default function ProtocolarPage() {
   useEffect(() => {
     carregarNotas()
     fetch('/api/data-servidor').then(r => r.json()).then(d => setDataRecebimento(d.hoje))
+    fetch('/api/fazendas').then(r => r.json()).then(setFazendas)
   }, [])
 
   if (perfil === 'fiscal') {
@@ -131,6 +135,29 @@ export default function ProtocolarPage() {
     setTimeout(() => setRespState(prev => { const n = { ...prev }; delete n[notaId]; return n }), 2000)
     // Update the underlying nota so re-renders reflect saved value
     setNotas(prev => prev.map(n => n.id === notaId ? { ...n, responsavel_pagamento: getExtra(notaId).responsavel } : n))
+  }
+
+  function getIeDraft(nota: any): string {
+    return ieDraft[nota.id] ?? (nota.ie_tomador || '')
+  }
+
+  async function salvarFazenda(notaId: string) {
+    const ieTomador = getIeDraft(notas.find(n => n.id === notaId))
+    if (!ieTomador) return
+    setIeState(prev => ({ ...prev, [notaId]: 'saving' }))
+    const res = await fetch(`/api/notas/${notaId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ieTomador }),
+    })
+    if (res.ok) {
+      setIeState(prev => ({ ...prev, [notaId]: 'saved' }))
+      setIeDraft(prev => { const n = { ...prev }; delete n[notaId]; return n })
+      setTimeout(() => setIeState(prev => { const n = { ...prev }; delete n[notaId]; return n }), 2000)
+      await carregarNotas()
+    } else {
+      setIeState(prev => ({ ...prev, [notaId]: 'erro' }))
+    }
   }
 
   function toggleAll() {
@@ -401,7 +428,9 @@ export default function ProtocolarPage() {
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Fazenda</p>
-                        <p className="text-sm text-slate-300">{nota.fazenda_nome || nota.ie_tomador}</p>
+                        <p className="text-sm text-slate-300">
+                          {nota.fazenda_nome || nota.ie_tomador || <span className="text-amber-400">Sem IE</span>}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0 w-32">
@@ -461,6 +490,41 @@ export default function ProtocolarPage() {
                           {rs === 'saving' ? '...' : rs === 'saved' ? '✓ Salvo' : 'Salvar'}
                         </button>
                       </div>
+                    </div>
+
+                    {/* Fazenda (IE) — saveable independently */}
+                    <div>
+                      <label className={`block text-xs mb-1 ${!nota.ie_tomador ? 'text-amber-400 font-medium' : 'text-slate-500'}`}>
+                        Fazenda (IE){!nota.ie_tomador ? ' — sem IE' : ''}
+                      </label>
+                      <div className="flex gap-1.5">
+                        <select
+                          value={getIeDraft(nota)}
+                          onChange={e => setIeDraft(prev => ({ ...prev, [nota.id]: e.target.value }))}
+                          className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 w-40
+                                     focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                        >
+                          <option value="">Selecionar...</option>
+                          {fazendas.map(f => (
+                            <option key={f.id} value={f.ie_tomador}>{f.nome}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => salvarFazenda(nota.id)}
+                          disabled={ieState[nota.id] === 'saving' || !getIeDraft(nota) || getIeDraft(nota) === (nota.ie_tomador || '')}
+                          className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all whitespace-nowrap
+                            ${ieState[nota.id] === 'saved'
+                              ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
+                              : getIeDraft(nota) !== (nota.ie_tomador || '')
+                                ? 'border-slate-600 text-slate-300 hover:text-white hover:border-slate-400'
+                                : 'border-slate-700 text-slate-600 cursor-not-allowed'}`}
+                        >
+                          {ieState[nota.id] === 'saving' ? '...' : ieState[nota.id] === 'saved' ? '✓ Salvo' : 'Salvar'}
+                        </button>
+                      </div>
+                      {ieState[nota.id] === 'erro' && (
+                        <p className="text-xs text-red-400 mt-1">Erro ao salvar</p>
+                      )}
                     </div>
 
                     <div>
