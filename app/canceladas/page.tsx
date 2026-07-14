@@ -14,6 +14,8 @@ export default function CanceladasPage() {
   const [loading, setLoading] = useState(true)
   const [filtroMes, setFiltroMes] = useState(new Date().toISOString().slice(0, 7))
   const [filtros, setFiltros] = useState({ numero: '', emissor: '', fazenda: '' })
+  const [pagina, setPagina] = useState(1)
+  const PAGE_SIZE = 25
 
   useEffect(() => {
     setLoading(true)
@@ -32,6 +34,14 @@ export default function CanceladasPage() {
     return true
   })
   const temFiltro = Object.values(filtros).some(v => v !== '')
+
+  const totalPaginas = Math.max(1, Math.ceil(notasFiltradas.length / PAGE_SIZE))
+  const paginaAtual = Math.min(pagina, totalPaginas)
+  const notasPaginadas = notasFiltradas.slice((paginaAtual - 1) * PAGE_SIZE, paginaAtual * PAGE_SIZE)
+
+  useEffect(() => {
+    setPagina(1)
+  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtroMes])
 
   return (
     <div className="p-8 max-w-6xl">
@@ -109,7 +119,7 @@ export default function CanceladasPage() {
                 </td>
               </tr>
             )}
-            {notasFiltradas.map((n: any) => (
+            {notasPaginadas.map((n: any) => (
               <tr key={n.id} className="hover:bg-slate-800/30 transition-colors">
                 <td className="px-4 py-3 text-sm text-white font-medium">{n.numero}</td>
                 <td className="px-4 py-3 text-xs text-slate-400 max-w-[160px] truncate" title={n.emissor_nome}>
@@ -134,6 +144,32 @@ export default function CanceladasPage() {
             ))}
           </tbody>
         </table>
+
+        {!loading && notasFiltradas.length > PAGE_SIZE && (
+          <div className="px-5 py-3 border-t border-slate-800 flex items-center justify-between">
+            <span className="text-xs text-slate-500">
+              Página {paginaAtual} de {totalPaginas}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPagina(p => Math.max(1, p - 1))}
+                disabled={paginaAtual === 1}
+                className="px-3 py-1.5 text-xs text-slate-400 hover:text-white border border-slate-700
+                           hover:border-slate-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-all"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+                disabled={paginaAtual === totalPaginas}
+                className="px-3 py-1.5 text-xs text-slate-400 hover:text-white border border-slate-700
+                           hover:border-slate-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-all"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
