@@ -64,12 +64,6 @@ export async function POST(req: NextRequest) {
   ])
 
   for (const row of rows) {
-    const tipo = String(row['Tipo'] || '').trim()
-    if (tipo && tipo !== 'NFe') {
-      ignoradas++
-      continue
-    }
-
     const numero = normalizeNumero(row['Num'] || '')
     const valor = parseFloat(String(row['Valor'] || '0').replace(',', '.'))
     const emissorNome = String(row['Emissor Nome'] || '').trim()
@@ -81,13 +75,14 @@ export async function POST(req: NextRequest) {
     const rawStatus = String(row['Status'] || '').trim()
     statusVistos.add(rawStatus1 || rawStatus || '(vazio)')
 
-    if (!numero || !emissorNome || !ieTomador || !chave) {
+    if (!numero || !emissorNome || !chave) {
       ignoradas++
       ignoradasLista.push({ numero: numero || '(sem número)', emissor: emissorNome || '(sem emissor)', motivo: 'Dados inválidos' })
       continue
     }
 
-    if (!iesCadastradas.has(ieTomador)) {
+    // Notas fiscais de serviço (NFS-e) não possuem Tomador IE — só validamos a fazenda quando a nota informa uma IE
+    if (ieTomador && !iesCadastradas.has(ieTomador)) {
       ignoradas++
       ignoradasLista.push({ numero, emissor: emissorNome, motivo: 'Fazenda não cadastrada' })
       continue
