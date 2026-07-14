@@ -15,6 +15,8 @@ export default function FiscalPage() {
   const [estornando, setEstornando] = useState<string | null>(null)
   const [justificativa, setJustificativa] = useState('')
   const [enviandoEstorno, setEnviandoEstorno] = useState(false)
+  const [pagina, setPagina] = useState(1)
+  const PAGE_SIZE = 25
 
   const perfil = (session?.user as any)?.perfil
   const userId = (session?.user as any)?.id
@@ -93,6 +95,14 @@ export default function FiscalPage() {
         return sortConfig.direction === 'asc' ? cmp : -cmp
       })
     : protocolosFiltrados
+
+  const totalPaginas = Math.max(1, Math.ceil(protocolosOrdenados.length / PAGE_SIZE))
+  const paginaAtual = Math.min(pagina, totalPaginas)
+  const protocolosPaginados = protocolosOrdenados.slice((paginaAtual - 1) * PAGE_SIZE, paginaAtual * PAGE_SIZE)
+
+  useEffect(() => {
+    setPagina(1)
+  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.dtEmissao, sortConfig.key, sortConfig.direction, filtroMes, filtroStatus])
 
   function handleSort(key: string) {
     setSortConfig(prev => prev.key === key
@@ -256,7 +266,7 @@ export default function FiscalPage() {
                 </td>
               </tr>
             )}
-            {protocolosOrdenados.map((p: any) => (
+            {protocolosPaginados.map((p: any) => (
               <tr key={p.id} className="hover:bg-slate-800/30 transition-colors">
                 <td className="px-4 py-3 text-sm text-white font-medium">{p.numero}</td>
                 <td className="px-4 py-3 text-xs text-slate-400 max-w-[120px] truncate" title={p.emissor_nome}>{p.emissor_nome}</td>
@@ -312,6 +322,32 @@ export default function FiscalPage() {
             ))}
           </tbody>
         </table>
+
+        {!loading && protocolosOrdenados.length > PAGE_SIZE && (
+          <div className="px-5 py-3 border-t border-slate-800 flex items-center justify-between">
+            <span className="text-xs text-slate-500">
+              Página {paginaAtual} de {totalPaginas}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPagina(p => Math.max(1, p - 1))}
+                disabled={paginaAtual === 1}
+                className="px-3 py-1.5 text-xs text-slate-400 hover:text-white border border-slate-700
+                           hover:border-slate-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-all"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+                disabled={paginaAtual === totalPaginas}
+                className="px-3 py-1.5 text-xs text-slate-400 hover:text-white border border-slate-700
+                           hover:border-slate-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-all"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
