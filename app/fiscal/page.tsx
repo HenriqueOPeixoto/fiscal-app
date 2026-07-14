@@ -96,6 +96,7 @@ export default function FiscalPage() {
       case 'emissor_nome': return p.emissor_nome || ''
       case 'fazenda': return p.fazenda_nome || p.ie_tomador || ''
       case 'valor': return Number(p.valor) || 0
+      case 'dt_emissao': return p.dt_emissao || ''
       case 'data_recebimento': return p.data_recebimento || ''
       case 'vencimento': return p.vencimento || ''
       default: return ''
@@ -139,7 +140,7 @@ export default function FiscalPage() {
   }
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-white">Lançamentos Fiscais</h1>
         <p className="text-slate-400 text-sm mt-1">Gerencie as notas protocoladas pelo departamento de compras</p>
@@ -264,6 +265,7 @@ export default function FiscalPage() {
                 { label: 'Emissor', key: 'emissor_nome' },
                 { label: 'Fazenda', key: 'fazenda' },
                 { label: 'Valor', key: 'valor' },
+                { label: 'Data Emissão', key: 'dt_emissao' },
                 { label: 'Data Rec.', key: 'data_recebimento' },
                 { label: 'Forma Pag.', key: null },
                 { label: 'Pedidos', key: null },
@@ -289,7 +291,7 @@ export default function FiscalPage() {
           <tbody className="divide-y divide-slate-800">
             {!loading && protocolosFiltrados.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-slate-500 text-sm">
+                <td colSpan={11} className="px-4 py-10 text-center text-slate-500 text-sm">
                   {protocolos.length === 0 ? 'Nenhuma nota encontrada' : 'Nenhuma nota corresponde aos filtros'}
                 </td>
               </tr>
@@ -302,6 +304,7 @@ export default function FiscalPage() {
                 <td className="px-4 py-3 text-sm text-white">
                   {Number(p.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </td>
+                <td className="px-4 py-3 text-xs text-slate-400">{p.dt_emissao?.slice(0, 10)}</td>
                 <td className="px-4 py-3 text-xs text-slate-400">{p.data_recebimento?.slice(0, 10)}</td>
                 <td className="px-4 py-3 text-xs text-slate-300">{p.forma_pagamento || '—'}</td>
                 <td className="px-4 py-3 text-xs text-slate-300">{p.pedidos || '—'}</td>
@@ -315,7 +318,7 @@ export default function FiscalPage() {
                     {p.concluida ? `✓ ${p.responsavel_nome || ''}` : 'Pendente'}
                   </span>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   {canAct(p) && !p.concluida ? (
                     <div className="flex gap-1">
                       <button
