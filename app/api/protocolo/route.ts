@@ -100,14 +100,14 @@ export async function GET(req: NextRequest) {
   const args: any[] = []
 
   if (mes) {
-    sql += ` AND strftime('%Y-%m', p.data_recebimento) = ?`
+    sql += ` AND to_char(p.data_recebimento::timestamp, 'YYYY-MM') = ?`
     args.push(mes)
   }
 
   if (status === 'pendente') {
-    sql += ` AND (lf.concluida IS NULL OR lf.concluida = 0)`
+    sql += ` AND (lf.concluida IS NULL OR lf.concluida = false)`
   } else if (status === 'concluida') {
-    sql += ` AND lf.concluida = 1`
+    sql += ` AND lf.concluida = true`
   }
 
   sql += ` ORDER BY p.data_recebimento DESC, n.numero`

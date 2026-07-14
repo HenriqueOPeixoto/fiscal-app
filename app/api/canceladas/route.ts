@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const args: any[] = []
 
   if (mes) {
-    sql += ` AND strftime('%Y-%m', nc.dt_emissao) = ?`
+    sql += ` AND to_char(nc.dt_emissao::timestamp, 'YYYY-MM') = ?`
     args.push(mes)
   }
 

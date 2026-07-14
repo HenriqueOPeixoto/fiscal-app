@@ -1,24 +1,45 @@
-import { createClient } from '@libsql/client'
-import { drizzle } from 'drizzle-orm/libsql'
+import { Pool } from 'pg'
+import { drizzle } from 'drizzle-orm/node-postgres'
 import * as schema from './schema'
 
-const client = createClient({
-  url: process.env.DATABASE_URL || 'file:./fiscal.db',
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
 })
 
-export const db = drizzle(client, { schema })
+export const db = drizzle(pool, { schema })
+
+type Query = string | { sql: string; args?: unknown[] }
+
+// Existing call sites were written for @libsql/client's API (`?` placeholders,
+// `{ rows, rowsAffected }`) — this shim keeps that surface so the ~70 raw SQL
+// call sites across the app didn't all need mechanical rewriting for the
+// Postgres driver's `$1, $2, ...` placeholder style.
+function toPgQuery(sql: string, args: unknown[]) {
+  let i = 0
+  const text = sql.replace(/\?/g, () => `$${++i}`)
+  return { text, values: args }
+}
+
+async function execute(query: Query) {
+  const { sql, args } = typeof query === 'string' ? { sql: query, args: [] as unknown[] } : { sql: query.sql, args: query.args ?? [] }
+  const { text, values } = toPgQuery(sql, args)
+  const result = await pool.query(text, values)
+  return { rows: result.rows, rowsAffected: result.rowCount ?? 0 }
+}
+
+export const client = { execute, query: pool.query.bind(pool), end: pool.end.bind(pool) }
 
 // Initialize tables
 export async function initDB() {
-  await client.executeMultiple(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id TEXT PRIMARY KEY,
       nome TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
       senha TEXT NOT NULL,
       perfil TEXT NOT NULL,
-      ativo INTEGER NOT NULL DEFAULT 1,
-      criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+      ativo BOOLEAN NOT NULL DEFAULT TRUE,
+      criado_em TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
     );
 
     CREATE TABLE IF NOT EXISTS fazendas (
@@ -36,7 +57,7 @@ export async function initDB() {
       chave TEXT NOT NULL DEFAULT '',
       ie_tomador TEXT NOT NULL,
       dt_emissao TEXT NOT NULL,
-      importado_em TEXT NOT NULL DEFAULT (datetime('now')),
+      importado_em TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS'),
       importado_por_id TEXT NOT NULL REFERENCES usuarios(id),
       responsavel_pagamento TEXT,
       estorno_justificativa TEXT,
@@ -53,7 +74,7 @@ export async function initDB() {
       forma_pagamento TEXT,
       pedidos TEXT,
       vencimento TEXT,
-      criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+      criado_em TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS'),
       criado_por_id TEXT NOT NULL REFERENCES usuarios(id)
     );
 
@@ -67,7 +88,7 @@ export async function initDB() {
       ie_tomador TEXT NOT NULL,
       dt_emissao TEXT NOT NULL,
       status TEXT NOT NULL,
-      importado_em TEXT NOT NULL DEFAULT (datetime('now')),
+      importado_em TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS'),
       importado_por_id TEXT NOT NULL REFERENCES usuarios(id),
       UNIQUE(numero, ie_tomador, cnpj_emissor)
     );
@@ -76,14 +97,14 @@ export async function initDB() {
       id TEXT PRIMARY KEY,
       protocolo_id TEXT NOT NULL UNIQUE REFERENCES protocolos(id),
       forma_pagamento TEXT,
-      concluida INTEGER NOT NULL DEFAULT 0,
+      concluida BOOLEAN NOT NULL DEFAULT FALSE,
       concluida_em TEXT,
-      identificada INTEGER NOT NULL DEFAULT 0,
+      identificada BOOLEAN NOT NULL DEFAULT FALSE,
       pedidos TEXT,
       vencimento TEXT,
       anotacoes TEXT,
-      criado_em TEXT NOT NULL DEFAULT (datetime('now')),
-      atualizado_em TEXT NOT NULL DEFAULT (datetime('now')),
+      criado_em TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS'),
+      atualizado_em TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS'),
       responsavel_id TEXT NOT NULL REFERENCES usuarios(id)
     );
 
@@ -93,58 +114,14 @@ export async function initDB() {
       usuario_nome TEXT NOT NULL,
       acao TEXT NOT NULL,
       descricao TEXT NOT NULL,
-      criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+      criado_em TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
     );
   `)
 
-  // Migration: logs table (separate execute to run on existing DBs)
-  await client.execute(`
-    CREATE TABLE IF NOT EXISTS logs (
-      id TEXT PRIMARY KEY,
-      usuario_id TEXT NOT NULL,
-      usuario_nome TEXT NOT NULL,
-      acao TEXT NOT NULL,
-      descricao TEXT NOT NULL,
-      criado_em TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `)
-
-  // Recovery: if a previous migration left notas_v1 behind, restore it
-  const v1Check = await client.execute(`SELECT name FROM sqlite_master WHERE type='table' AND name='notas_v1'`)
-  if (v1Check.rows.length > 0) {
-    const notasCount = await client.execute(`SELECT COUNT(*) as n FROM notas`)
-    if ((notasCount.rows[0] as any).n === 0) {
-      await client.execute(`PRAGMA foreign_keys = OFF`)
-      await client.execute(`DROP TABLE notas`)
-      await client.execute(`ALTER TABLE notas_v1 RENAME TO notas`)
-      await client.execute(`PRAGMA foreign_keys = ON`)
-    } else {
-      await client.execute(`DROP TABLE notas_v1`)
-    }
-  }
-
-  // Migrations: simple column additions
-  for (const col of ['forma_pagamento', 'pedidos', 'vencimento']) {
-    try { await client.execute(`ALTER TABLE protocolos ADD COLUMN ${col} TEXT`) } catch {}
-  }
-  for (const col of ['responsavel_pagamento', 'estorno_justificativa', 'estorno_em', 'estornada_por']) {
-    try { await client.execute(`ALTER TABLE notas ADD COLUMN ${col} TEXT`) } catch {}
-  }
-
-  // Migration: add cnpj_emissor if missing (new DBs already have it via CREATE TABLE above)
-  try { await client.execute(`ALTER TABLE notas ADD COLUMN cnpj_emissor TEXT NOT NULL DEFAULT ''`) } catch {}
-  try { await client.execute(`ALTER TABLE notas_canceladas ADD COLUMN cnpj_emissor TEXT NOT NULL DEFAULT ''`) } catch {}
-
-  // Migration: add chave (NF-e access key) if missing (new DBs already have it via CREATE TABLE above)
-  try { await client.execute(`ALTER TABLE notas ADD COLUMN chave TEXT NOT NULL DEFAULT ''`) } catch {}
-  try { await client.execute(`ALTER TABLE notas_canceladas ADD COLUMN chave TEXT NOT NULL DEFAULT ''`) } catch {}
-
   // Chave is the reliable way to detect duplicate notas — unique per note, ignoring blanks from before this column existed
-  await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_notas_chave ON notas(chave) WHERE chave != ''`)
-  await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_notas_canceladas_chave ON notas_canceladas(chave) WHERE chave != ''`)
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_notas_chave ON notas(chave) WHERE chave != ''`)
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_notas_canceladas_chave ON notas_canceladas(chave) WHERE chave != ''`)
 
   // Supports "ORDER BY importado_em DESC" in /api/notas without a temp b-tree sort when the table grows large
-  await client.execute(`CREATE INDEX IF NOT EXISTS idx_notas_importado_em ON notas(importado_em)`)
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_notas_importado_em ON notas(importado_em)`)
 }
-
-export { client }

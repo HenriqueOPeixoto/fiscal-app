@@ -46,8 +46,22 @@ export async function POST(req: NextRequest) {
     }, { status: 400 })
   }
 
+  // A sessão (JWT) guarda o id do usuário desde o login e não é revalidada a cada request —
+  // se o usuário foi removido/recriado no banco depois do login, todo INSERT falharia por FK
+  const usuarioExiste = await client.execute({ sql: 'SELECT 1 FROM usuarios WHERE id = ?', args: [userId] })
+  if (!usuarioExiste.rows.length) {
+    return NextResponse.json({
+      error: 'Sua sessão está desatualizada. Faça logout e login novamente antes de importar.',
+      debug: { colunas, statusVistos: [] },
+    }, { status: 401 })
+  }
+
   const normalizeIE = (ie: string) => String(ie).replace(/\D/g, '').replace(/^0+/, '')
   const normalizeNumero = (n: string) => String(n).trim().replace(/^0+(?=\d)/, '')
+  // Postgres rejects NUL bytes in text columns outright ("null character not permitted"),
+  // unlike SQLite which stored them silently — strip them from free-text fields coming from the spreadsheet
+  const NUL = String.fromCharCode(0)
+  const stripNul = (s: string) => s.split(NUL).join('')
 
   // Load registered IEs once before the loop, normalized for comparison
   const fazendasResult = await client.execute('SELECT ie_tomador FROM fazendas')
@@ -66,7 +80,7 @@ export async function POST(req: NextRequest) {
   for (const row of rows) {
     const numero = normalizeNumero(row['Num'] || '')
     const valor = parseFloat(String(row['Valor'] || '0').replace(',', '.'))
-    const emissorNome = String(row['Emissor Nome'] || '').trim()
+    const emissorNome = stripNul(String(row['Emissor Nome'] || '')).trim()
     const cnpjEmissor = String(row['Emissor CNPJ/CPF'] || '').replace(/\D/g, '')
     const ieTomador = normalizeIE(row['Tomador IE'] || '')
     const chave = String(row['Chave'] || '').replace(/\D/g, '')
@@ -100,13 +114,14 @@ export async function POST(req: NextRequest) {
       const date = XLSX.SSF.parse_date_code(dtEmissaoRaw)
       dtEmissao = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
     } else {
-      dtEmissao = String(dtEmissaoRaw || '').replace(/\./g, '-')
+      dtEmissao = stripNul(String(dtEmissaoRaw || '')).replace(/\./g, '-')
     }
 
     try {
       const r = await client.execute({
-        sql: `INSERT OR IGNORE INTO notas (id, numero, valor, emissor_nome, cnpj_emissor, chave, ie_tomador, dt_emissao, importado_por_id)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO notas (id, numero, valor, emissor_nome, cnpj_emissor, chave, ie_tomador, dt_emissao, importado_por_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT DO NOTHING`,
         args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, chave, ieTomador, dtEmissao, userId],
       })
       if (r.rowsAffected > 0) { importadas++; chavesExistentes.add(chave) }

@@ -1,6 +1,6 @@
-import { createClient } from '@libsql/client'
 import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
+import { client, initDB } from '../lib/db'
 
 const FAZENDAS = [
   { ie: '132759071', nome: 'CAMILA' },
@@ -17,51 +17,18 @@ const FAZENDAS = [
 ]
 
 async function seed() {
-  const client = createClient({ url: 'file:./fiscal.db' })
-
-  // Create tables
-  await client.executeMultiple(`
-    CREATE TABLE IF NOT EXISTS usuarios (
-      id TEXT PRIMARY KEY, nome TEXT NOT NULL, email TEXT NOT NULL UNIQUE,
-      senha TEXT NOT NULL, perfil TEXT NOT NULL, ativo INTEGER NOT NULL DEFAULT 1,
-      criado_em TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS fazendas (
-      id TEXT PRIMARY KEY, ie_tomador TEXT NOT NULL UNIQUE, nome TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS notas (
-      id TEXT PRIMARY KEY, numero TEXT NOT NULL, valor REAL NOT NULL,
-      emissor_nome TEXT NOT NULL, ie_tomador TEXT NOT NULL, dt_emissao TEXT NOT NULL,
-      importado_em TEXT NOT NULL DEFAULT (datetime('now')),
-      importado_por_id TEXT NOT NULL REFERENCES usuarios(id),
-      UNIQUE(numero, ie_tomador)
-    );
-    CREATE TABLE IF NOT EXISTS protocolos (
-      id TEXT PRIMARY KEY, nota_id TEXT NOT NULL UNIQUE REFERENCES notas(id),
-      data_recebimento TEXT NOT NULL, responsavel_forma_pag TEXT,
-      criado_em TEXT NOT NULL DEFAULT (datetime('now')),
-      criado_por_id TEXT NOT NULL REFERENCES usuarios(id)
-    );
-    CREATE TABLE IF NOT EXISTS lancamentos_fiscal (
-      id TEXT PRIMARY KEY, protocolo_id TEXT NOT NULL UNIQUE REFERENCES protocolos(id),
-      forma_pagamento TEXT, concluida INTEGER NOT NULL DEFAULT 0, concluida_em TEXT,
-      identificada INTEGER NOT NULL DEFAULT 0, pedidos TEXT, vencimento TEXT,
-      anotacoes TEXT, criado_em TEXT NOT NULL DEFAULT (datetime('now')),
-      atualizado_em TEXT NOT NULL DEFAULT (datetime('now')),
-      responsavel_id TEXT NOT NULL REFERENCES usuarios(id)
-    );
-  `)
+  await initDB()
 
   // Seed fazendas
   for (const f of FAZENDAS) {
     await client.execute({
-      sql: `INSERT OR IGNORE INTO fazendas (id, ie_tomador, nome) VALUES (?, ?, ?)`,
+      sql: `INSERT INTO fazendas (id, ie_tomador, nome) VALUES (?, ?, ?) ON CONFLICT DO NOTHING`,
       args: [randomUUID(), f.ie, f.nome],
     })
     // Also insert with leading zeros variant
     const withZeros = f.ie.replace(/^0+/, '') !== f.ie ? f.ie : '00' + f.ie
     await client.execute({
-      sql: `INSERT OR IGNORE INTO fazendas (id, ie_tomador, nome) VALUES (?, ?, ?)`,
+      sql: `INSERT INTO fazendas (id, ie_tomador, nome) VALUES (?, ?, ?) ON CONFLICT DO NOTHING`,
       args: [randomUUID(), withZeros, f.nome],
     }).catch(() => {})
   }
@@ -69,21 +36,21 @@ async function seed() {
   // Seed admin user
   const senhaHash = await bcrypt.hash('admin123', 10)
   await client.execute({
-    sql: `INSERT OR IGNORE INTO usuarios (id, nome, email, senha, perfil) VALUES (?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO usuarios (id, nome, email, senha, perfil) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
     args: [randomUUID(), 'Administrador', 'admin@empresa.com', senhaHash, 'admin'],
   })
 
   // Seed compras user
   const senhaCompras = await bcrypt.hash('compras123', 10)
   await client.execute({
-    sql: `INSERT OR IGNORE INTO usuarios (id, nome, email, senha, perfil) VALUES (?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO usuarios (id, nome, email, senha, perfil) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
     args: [randomUUID(), 'Compras', 'compras@empresa.com', senhaCompras, 'compras'],
   })
 
   // Seed fiscal user
   const senhaFiscal = await bcrypt.hash('fiscal123', 10)
   await client.execute({
-    sql: `INSERT OR IGNORE INTO usuarios (id, nome, email, senha, perfil) VALUES (?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO usuarios (id, nome, email, senha, perfil) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
     args: [randomUUID(), 'Fiscal', 'fiscal@empresa.com', senhaFiscal, 'fiscal'],
   })
 
@@ -92,7 +59,7 @@ async function seed() {
   console.log('  admin@empresa.com / admin123 (Admin)')
   console.log('  compras@empresa.com / compras123 (Compras)')
   console.log('  fiscal@empresa.com / fiscal123 (Fiscal)')
-  client.close()
+  await client.end()
 }
 
 seed().catch(console.error)

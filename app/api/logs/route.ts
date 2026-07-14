@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (mes) {
-    sql += ` AND strftime('%Y-%m', criado_em) = ?`
+    sql += ` AND to_char(criado_em::timestamp, 'YYYY-MM') = ?`
     args.push(mes)
   }
 

@@ -162,6 +162,18 @@ export default function ImportarPage() {
                   <span className="text-slate-300">{resultado.ignoradas}</span> ignoradas (já existiam ou inválidas)
                 </p>
               </div>
+              {resultado.erros?.length > 0 && (
+                <details className="mt-3" open>
+                  <summary className="text-xs text-red-400 cursor-pointer hover:text-red-300">
+                    Erros durante a importação ({resultado.erros.length})
+                  </summary>
+                  <div className="mt-2 bg-slate-950 rounded-lg max-h-52 overflow-y-auto p-2 space-y-1">
+                    {resultado.erros.map((e: string, i: number) => (
+                      <p key={i} className="text-xs text-red-300/80 font-mono break-all">{e}</p>
+                    ))}
+                  </div>
+                </details>
+              )}
               {resultado.ignoradasLista?.length > 0 && (
                 <details className="mt-3">
                   <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">

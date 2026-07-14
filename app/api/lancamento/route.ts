@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     await client.execute({
       sql: `UPDATE lancamentos_fiscal SET concluida = ?, concluida_em = ?, atualizado_em = ? WHERE id = ?`,
-      args: [concluida ? 1 : 0, concluidaEm, now, lancamento.id],
+      args: [!!concluida, concluidaEm, now, lancamento.id],
     })
 
     const userName = session.user?.name || userId
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     sql: `INSERT INTO lancamentos_fiscal
             (id, protocolo_id, concluida, concluida_em, responsavel_id, criado_em, atualizado_em)
           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, protocoloId, concluida ? 1 : 0, concluidaEm, userId, now, now],
+    args: [id, protocoloId, !!concluida, concluidaEm, userId, now, now],
   })
 
   const userName = session.user?.name || userId

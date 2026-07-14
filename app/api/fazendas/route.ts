@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       `Cadastrou fazenda "${nome.trim()}" (IE: ${ieTomador.trim()})`)
     return NextResponse.json({ ok: true })
   } catch (e: any) {
-    if (e.message?.includes('UNIQUE')) {
+    if (e.code === '23505') {
       return NextResponse.json({ error: 'Já existe uma fazenda com essa IE' }, { status: 409 })
     }
     return NextResponse.json({ error: e.message }, { status: 500 })

@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       `Criou usuário ${nome} (${email}), perfil: ${perfil}`)
     return NextResponse.json({ id, success: true })
   } catch (e: any) {
-    if (e.message?.includes('UNIQUE')) {
+    if (e.code === '23505') {
       return NextResponse.json({ error: 'Email já cadastrado' }, { status: 409 })
     }
     throw e
@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest) {
   const updates: string[] = []
   const args: any[] = []
 
-  if (ativo !== undefined) { updates.push('ativo = ?'); args.push(ativo ? 1 : 0) }
+  if (ativo !== undefined) { updates.push('ativo = ?'); args.push(!!ativo) }
   if (perfil) { updates.push('perfil = ?'); args.push(perfil) }
   if (senha) {
     const hash = await bcrypt.hash(senha, 10)

@@ -6,16 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "seed": "npx tsx scripts/seed.ts"
+    "seed": "tsx --env-file=.env scripts/seed.ts"
   },
   "dependencies": {
-    "@libsql/client": "^0.14.0",
     "@tailwindcss/postcss": "^4.3.0",
     "bcryptjs": "^2.4.3",
     "date-fns": "^3.6.0",
     "drizzle-orm": "^0.33.0",
     "next": "15.3.3",
     "next-auth": "^4.24.11",
+    "pg": "^8.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.3.0",
@@ -24,6 +24,7 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.24.0",
