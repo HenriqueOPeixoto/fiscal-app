@@ -158,11 +158,6 @@ export default function ImportarPage() {
                 <p className="text-slate-300">
                   <span className="text-white font-medium">{resultado.importadas}</span> notas importadas
                 </p>
-                {resultado.canceladas > 0 && (
-                  <p className="text-slate-300">
-                    <span className="text-amber-400 font-medium">{resultado.canceladas}</span> notas canceladas/substituídas
-                  </p>
-                )}
                 <p className="text-slate-400">
                   <span className="text-slate-300">{resultado.ignoradas}</span> ignoradas (já existiam ou inválidas)
                 </p>
@@ -197,14 +192,6 @@ export default function ImportarPage() {
                     className="text-xs text-emerald-400 hover:text-emerald-300 underline"
                   >
                     Ir para Protocolar →
-                  </button>
-                )}
-                {resultado.canceladas > 0 && (
-                  <button
-                    onClick={() => router.push('/canceladas')}
-                    className="text-xs text-amber-400 hover:text-amber-300 underline"
-                  >
-                    Ver Canceladas →
                   </button>
                 )}
               </div>

@@ -29,7 +29,6 @@ export async function POST(req: NextRequest) {
 
   const userId = (session.user as any).id
   let importadas = 0
-  let canceladas = 0
   let ignoradas = 0
   const erros: string[] = []
   const ignoradasLista: { numero: string; emissor: string; motivo: string }[] = []
@@ -46,11 +45,6 @@ export async function POST(req: NextRequest) {
       debug: { colunas, statusVistos: [] },
     }, { status: 400 })
   }
-
-  const STATUS_CANCELADO = [
-    'Cancelamento de NF-e homologado',
-    'NFS-e de Substituição Gerada',
-  ]
 
   const normalizeIE = (ie: string) => String(ie).replace(/\D/g, '').replace(/^0+/, '')
   const normalizeNumero = (n: string) => String(n).trim().replace(/^0+(?=\d)/, '')
@@ -83,12 +77,9 @@ export async function POST(req: NextRequest) {
     const ieTomador = normalizeIE(row['Tomador IE'] || '')
     const chave = String(row['Chave'] || '').replace(/\D/g, '')
     const dtEmissaoRaw = row['DtEmi']
-    // Fiscal.io exports two Status columns; SheetJS renames the second to Status_1.
-    // The cancellation status lives in Status_1 when present, otherwise Status.
     const rawStatus1 = String(row['Status_1'] || '').trim()
     const rawStatus = String(row['Status'] || '').trim()
-    const status = STATUS_CANCELADO.includes(rawStatus1) ? rawStatus1 : rawStatus
-    statusVistos.add(status || `(vazio — Status="${rawStatus}" Status_1="${rawStatus1}")`)
+    statusVistos.add(rawStatus1 || rawStatus || '(vazio)')
 
     if (!numero || !emissorNome || !ieTomador || !chave) {
       ignoradas++
@@ -118,23 +109,13 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      if (STATUS_CANCELADO.includes(status)) {
-        const r = await client.execute({
-          sql: `INSERT OR IGNORE INTO notas_canceladas (id, numero, valor, emissor_nome, cnpj_emissor, chave, ie_tomador, dt_emissao, status, importado_por_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, chave, ieTomador, dtEmissao, status, userId],
-        })
-        if (r.rowsAffected > 0) { canceladas++; chavesExistentes.add(chave) }
-        else { ignoradas++; ignoradasLista.push({ numero, emissor: emissorNome, motivo: 'Já existia' }) }
-      } else {
-        const r = await client.execute({
-          sql: `INSERT OR IGNORE INTO notas (id, numero, valor, emissor_nome, cnpj_emissor, chave, ie_tomador, dt_emissao, importado_por_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, chave, ieTomador, dtEmissao, userId],
-        })
-        if (r.rowsAffected > 0) { importadas++; chavesExistentes.add(chave) }
-        else { ignoradas++; ignoradasLista.push({ numero, emissor: emissorNome, motivo: 'Já existia' }) }
-      }
+      const r = await client.execute({
+        sql: `INSERT OR IGNORE INTO notas (id, numero, valor, emissor_nome, cnpj_emissor, chave, ie_tomador, dt_emissao, importado_por_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [randomUUID(), numero, valor, emissorNome, cnpjEmissor, chave, ieTomador, dtEmissao, userId],
+      })
+      if (r.rowsAffected > 0) { importadas++; chavesExistentes.add(chave) }
+      else { ignoradas++; ignoradasLista.push({ numero, emissor: emissorNome, motivo: 'Já existia' }) }
     } catch (e: any) {
       erros.push(`Nota ${numero}: ${e.message}`)
       ignoradas++
@@ -143,9 +124,9 @@ export async function POST(req: NextRequest) {
 
   const userName = session.user?.name || userId
   await log(userId, userName, 'nota_importada',
-    `Importou ${importadas} nota(s), ${canceladas} cancelada(s), ${ignoradas} ignorada(s)`)
+    `Importou ${importadas} nota(s), ${ignoradas} ignorada(s)`)
 
-  return NextResponse.json({ importadas, canceladas, ignoradas, ignoradasLista, erros, debug: { colunas, statusVistos: [...statusVistos] } })
+  return NextResponse.json({ importadas, ignoradas, ignoradasLista, erros, debug: { colunas, statusVistos: [...statusVistos] } })
 }
 
 export async function GET(req: NextRequest) {
