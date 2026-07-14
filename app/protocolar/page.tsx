@@ -172,7 +172,10 @@ export default function ProtocolarPage() {
   const selecionadasSemForma = Array.from(selecionadas).filter(
     id => !getExtra(id).formaPagamento.trim()
   )
-  const podeProtocolar = selecionadas.size > 0 && selecionadasSemForma.length === 0
+  const selecionadasSemIE = Array.from(selecionadas).filter(
+    id => !notas.find(n => n.id === id)?.ie_tomador
+  )
+  const podeProtocolar = selecionadas.size > 0 && selecionadasSemForma.length === 0 && selecionadasSemIE.length === 0
 
   async function confirmarCancelar() {
     if (!cancelandoNota) return
@@ -275,6 +278,11 @@ export default function ProtocolarPage() {
           {tentouProtocolar && selecionadasSemForma.length > 0 && (
             <p className="text-xs text-red-400">
               {selecionadasSemForma.length} nota(s) sem Forma de Pagamento definida
+            </p>
+          )}
+          {tentouProtocolar && selecionadasSemIE.length > 0 && (
+            <p className="text-xs text-red-400">
+              {selecionadasSemIE.length} nota(s) sem IE da fazenda informada
             </p>
           )}
         </div>
@@ -400,6 +408,7 @@ export default function ProtocolarPage() {
               const extra = getExtra(nota.id)
               const checked = selecionadas.has(nota.id)
               const formaInvalida = tentouProtocolar && checked && !extra.formaPagamento.trim()
+              const ieInvalida = tentouProtocolar && checked && !nota.ie_tomador
               const rs = respState[nota.id]
               const respChanged = extra.responsavel !== (nota.responsavel_pagamento ?? '')
               return (
@@ -494,8 +503,10 @@ export default function ProtocolarPage() {
 
                     {/* Fazenda (IE) — saveable independently */}
                     <div>
-                      <label className={`block text-xs mb-1 ${!nota.ie_tomador ? 'text-amber-400 font-medium' : 'text-slate-500'}`}>
-                        Fazenda (IE){!nota.ie_tomador ? ' — sem IE' : ''}
+                      <label className={`block text-xs mb-1 ${
+                        ieInvalida ? 'text-red-400 font-medium' : !nota.ie_tomador ? 'text-amber-400 font-medium' : 'text-slate-500'
+                      }`}>
+                        Fazenda (IE){ieInvalida ? ' — obrigatória' : !nota.ie_tomador ? ' — sem IE' : ''}
                       </label>
                       <div className="flex gap-1.5">
                         <select

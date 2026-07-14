@@ -29,11 +29,14 @@ export async function POST(req: NextRequest) {
 
   // Check if nota exists
   const nota = await client.execute({
-    sql: `SELECT id, numero, emissor_nome FROM notas WHERE id = ?`,
+    sql: `SELECT id, numero, emissor_nome, ie_tomador FROM notas WHERE id = ?`,
     args: [notaId],
   })
   if (!nota.rows.length) {
     return NextResponse.json({ error: 'Nota não encontrada' }, { status: 404 })
+  }
+  if (!(nota.rows[0] as any).ie_tomador) {
+    return NextResponse.json({ error: 'Informe a IE da fazenda antes de protocolar' }, { status: 400 })
   }
 
   // Check if protocol already exists
