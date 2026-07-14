@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
   ]
 
   const normalizeIE = (ie: string) => String(ie).replace(/\D/g, '').replace(/^0+/, '')
+  const normalizeNumero = (n: string) => String(n).trim().replace(/^0+(?=\d)/, '')
 
   // Load registered IEs once before the loop, normalized for comparison
   const fazendasResult = await client.execute('SELECT ie_tomador FROM fazendas')
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
       continue
     }
 
-    const numero = String(row['Num'] || '').trim()
+    const numero = normalizeNumero(row['Num'] || '')
     const valor = parseFloat(String(row['Valor'] || '0').replace(',', '.'))
     const emissorNome = String(row['Emissor Nome'] || '').trim()
     const cnpjEmissor = String(row['Emissor CNPJ/CPF'] || '').replace(/\D/g, '')
