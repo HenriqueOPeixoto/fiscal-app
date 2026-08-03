@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Preencha todos os campos obrigatórios' }, { status: 400 })
   }
 
-  if (chave.length !== 44) {
-    return NextResponse.json({ error: 'Chave de acesso deve ter 44 dígitos' }, { status: 400 })
+  if (chave.length !== 44 && chave.length !== 50) {
+    return NextResponse.json({ error: 'Chave de acesso deve ter 44 dígitos (NF-e) ou 50 dígitos (NFS-e)' }, { status: 400 })
   }
 
   const fazenda = await client.execute({

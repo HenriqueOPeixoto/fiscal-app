@@ -136,9 +136,8 @@ export default function IncluirNotaPage() {
           <input
             type="text"
             value={form.chave}
-            onChange={e => setField({ chave: e.target.value })}
-            placeholder="44 dígitos"
-            maxLength={44}
+            onChange={e => setField({ chave: e.target.value.replace(/\D/g, '') })}
+            placeholder="44 dígitos (NF-e) ou 50 (NFS-e)"
             required
             className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 font-mono
                        placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
