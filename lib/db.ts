@@ -60,6 +60,9 @@ export async function initDB() {
       importado_em TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS'),
       importado_por_id TEXT NOT NULL REFERENCES usuarios(id),
       responsavel_pagamento TEXT,
+      forma_pagamento TEXT,
+      pedidos TEXT,
+      vencimento TEXT,
       estorno_justificativa TEXT,
       estorno_em TEXT,
       estornada_por TEXT,
@@ -117,6 +120,11 @@ export async function initDB() {
       criado_em TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
     );
   `)
+
+  // Migration: forma_pagamento/pedidos/vencimento added to notas so drafts survive independently of protocolos
+  await pool.query(`ALTER TABLE notas ADD COLUMN IF NOT EXISTS forma_pagamento TEXT`)
+  await pool.query(`ALTER TABLE notas ADD COLUMN IF NOT EXISTS pedidos TEXT`)
+  await pool.query(`ALTER TABLE notas ADD COLUMN IF NOT EXISTS vencimento TEXT`)
 
   // Chave is the reliable way to detect duplicate notas — unique per note, ignoring blanks from before this column existed
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_notas_chave ON notas(chave) WHERE chave != ''`)

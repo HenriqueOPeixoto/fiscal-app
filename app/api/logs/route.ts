@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { client } from '@/lib/db'
 
 const CATEGORIA_ACOES: Record<string, string[]> = {
-  notas:      ['nota_importada', 'nota_cancelada'],
+  notas:      ['nota_importada', 'nota_cancelada', 'nota_atualizada', 'nota_excluida'],
   protocolos: ['protocolo_criado', 'protocolo_estornado', 'lancamento_atualizado'],
   usuarios:   ['usuario_criado', 'usuario_atualizado'],
   fazendas:   ['fazenda_criada', 'fazenda_atualizada', 'fazenda_excluida'],

@@ -34,11 +34,10 @@ export default function ProtocolarPage() {
   const [salvando, setSalvando] = useState(false)
   const [resultado, setResultado] = useState<string>('')
   const [tentouProtocolar, setTentouProtocolar] = useState(false)
-  // per-nota responsável save state: null | 'saving' | 'saved'
-  const [respState, setRespState] = useState<Record<string, 'saving' | 'saved'>>({})
+  // per-nota "salvar rascunho" state: saving | saved | erro
+  const [rowState, setRowState] = useState<Record<string, 'saving' | 'saved' | 'erro'>>({})
   const [fazendas, setFazendas] = useState<{ id: string; nome: string; ie_tomador: string }[]>([])
   const [ieDraft, setIeDraft] = useState<Record<string, string>>({})
-  const [ieState, setIeState] = useState<Record<string, 'saving' | 'saved' | 'erro'>>({})
   const [filtros, setFiltros] = useState({
     numero: '', emissor: '', fazenda: '',
     dtEmissaoInicio: primeiroDiaMesAtual(), dtEmissaoFim: ultimoDiaMesAtual(),
@@ -58,12 +57,17 @@ export default function ProtocolarPage() {
   async function carregarNotas() {
     const data = await fetch('/api/notas?semProtocolo=true').then(r => r.json())
     setNotas(data)
-    // Pre-fill responsavel from saved nota value, keep any unsaved edits already in state
+    // Pre-fill from saved nota values, keep any unsaved edits already in state
     setExtraFields(prev => {
       const next = { ...prev }
       for (const nota of data) {
-        if (nota.responsavel_pagamento && !prev[nota.id]) {
-          next[nota.id] = { ...emptyExtra(), responsavel: nota.responsavel_pagamento }
+        if (!prev[nota.id]) {
+          next[nota.id] = {
+            responsavel: nota.responsavel_pagamento || '',
+            formaPagamento: nota.forma_pagamento || '',
+            pedidos: nota.pedidos || '',
+            vencimento: nota.vencimento || '',
+          }
         }
       }
       return next
@@ -151,39 +155,44 @@ export default function ProtocolarPage() {
     setExtraFields(prev => ({ ...prev, [notaId]: { ...getExtra(notaId), ...patch } }))
   }
 
-  async function salvarResponsavel(notaId: string) {
-    setRespState(prev => ({ ...prev, [notaId]: 'saving' }))
-    await fetch(`/api/notas/${notaId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ responsavelPagamento: getExtra(notaId).responsavel }),
-    })
-    setRespState(prev => ({ ...prev, [notaId]: 'saved' }))
-    setTimeout(() => setRespState(prev => { const n = { ...prev }; delete n[notaId]; return n }), 2000)
-    // Update the underlying nota so re-renders reflect saved value
-    setNotas(prev => prev.map(n => n.id === notaId ? { ...n, responsavel_pagamento: getExtra(notaId).responsavel } : n))
-  }
-
   function getIeDraft(nota: any): string {
     return ieDraft[nota.id] ?? (nota.ie_tomador || '')
   }
 
-  async function salvarFazenda(notaId: string) {
-    const ieTomador = getIeDraft(notas.find(n => n.id === notaId))
-    if (!ieTomador) return
-    setIeState(prev => ({ ...prev, [notaId]: 'saving' }))
+  function getRowChanged(nota: any): boolean {
+    const extra = getExtra(nota.id)
+    return (
+      extra.responsavel !== (nota.responsavel_pagamento ?? '') ||
+      extra.formaPagamento !== (nota.forma_pagamento ?? '') ||
+      extra.pedidos !== (nota.pedidos ?? '') ||
+      extra.vencimento !== (nota.vencimento ?? '') ||
+      getIeDraft(nota) !== (nota.ie_tomador ?? '')
+    )
+  }
+
+  async function salvarNota(notaId: string) {
+    const nota = notas.find(n => n.id === notaId)
+    if (!nota) return
+    const extra = getExtra(notaId)
+    setRowState(prev => ({ ...prev, [notaId]: 'saving' }))
     const res = await fetch(`/api/notas/${notaId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ieTomador }),
+      body: JSON.stringify({
+        responsavelPagamento: extra.responsavel,
+        ieTomador: getIeDraft(nota),
+        formaPagamento: extra.formaPagamento,
+        pedidos: extra.pedidos,
+        vencimento: extra.vencimento,
+      }),
     })
     if (res.ok) {
-      setIeState(prev => ({ ...prev, [notaId]: 'saved' }))
+      setRowState(prev => ({ ...prev, [notaId]: 'saved' }))
       setIeDraft(prev => { const n = { ...prev }; delete n[notaId]; return n })
-      setTimeout(() => setIeState(prev => { const n = { ...prev }; delete n[notaId]; return n }), 2000)
+      setTimeout(() => setRowState(prev => { const n = { ...prev }; delete n[notaId]; return n }), 2000)
       await carregarNotas()
     } else {
-      setIeState(prev => ({ ...prev, [notaId]: 'erro' }))
+      setRowState(prev => ({ ...prev, [notaId]: 'erro' }))
     }
   }
 
@@ -447,8 +456,8 @@ export default function ProtocolarPage() {
               const checked = selecionadas.has(nota.id)
               const formaInvalida = tentouProtocolar && checked && !extra.formaPagamento.trim()
               const ieInvalida = tentouProtocolar && checked && !nota.ie_tomador
-              const rs = respState[nota.id]
-              const respChanged = extra.responsavel !== (nota.responsavel_pagamento ?? '')
+              const rowChanged = getRowChanged(nota)
+              const rs = rowState[nota.id]
               return (
                 <div key={nota.id} className={`px-5 py-3.5 transition-colors ${checked ? 'bg-emerald-500/5' : 'hover:bg-slate-800/50'}`}>
                   {/* Row 1: checkbox + nota info */}
@@ -509,71 +518,38 @@ export default function ProtocolarPage() {
                     </div>
                   )}
 
-                  {/* Row 2: per-note payment fields */}
+                  {/* Row 2: per-note payment fields — one button saves everything below at once */}
                   <div className="mt-2.5 ml-8 flex gap-3 flex-wrap items-end">
-                    {/* Responsável — saveable independently */}
                     <div>
                       <label className="block text-xs text-slate-500 mb-1">Responsável Pagamento</label>
-                      <div className="flex gap-1.5">
-                        <input
-                          type="text"
-                          value={extra.responsavel}
-                          onChange={e => setExtra(nota.id, { responsavel: e.target.value })}
-                          onKeyDown={e => { if (e.key === 'Enter') salvarResponsavel(nota.id) }}
-                          placeholder="Ex: BRUNA"
-                          className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 w-36
-                                     placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
-                        />
-                        <button
-                          onClick={() => salvarResponsavel(nota.id)}
-                          disabled={rs === 'saving' || (!respChanged && rs !== 'saved')}
-                          className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all whitespace-nowrap
-                            ${rs === 'saved'
-                              ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
-                              : respChanged
-                                ? 'border-slate-600 text-slate-300 hover:text-white hover:border-slate-400'
-                                : 'border-slate-700 text-slate-600 cursor-not-allowed'}`}
-                        >
-                          {rs === 'saving' ? '...' : rs === 'saved' ? '✓ Salvo' : 'Salvar'}
-                        </button>
-                      </div>
+                      <input
+                        type="text"
+                        value={extra.responsavel}
+                        onChange={e => setExtra(nota.id, { responsavel: e.target.value })}
+                        onKeyDown={e => { if (e.key === 'Enter') salvarNota(nota.id) }}
+                        placeholder="Ex: BRUNA"
+                        className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 w-36
+                                   placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                      />
                     </div>
 
-                    {/* Fazenda (IE) — saveable independently */}
                     <div>
                       <label className={`block text-xs mb-1 ${
                         ieInvalida ? 'text-red-400 font-medium' : !nota.ie_tomador ? 'text-amber-400 font-medium' : 'text-slate-500'
                       }`}>
                         Fazenda (IE){ieInvalida ? ' — obrigatória' : !nota.ie_tomador ? ' — sem IE' : ''}
                       </label>
-                      <div className="flex gap-1.5">
-                        <select
-                          value={getIeDraft(nota)}
-                          onChange={e => setIeDraft(prev => ({ ...prev, [nota.id]: e.target.value }))}
-                          className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 w-40
-                                     focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
-                        >
-                          <option value="">Selecionar...</option>
-                          {fazendas.map(f => (
-                            <option key={f.id} value={f.ie_tomador}>{f.nome}</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => salvarFazenda(nota.id)}
-                          disabled={ieState[nota.id] === 'saving' || !getIeDraft(nota) || getIeDraft(nota) === (nota.ie_tomador || '')}
-                          className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all whitespace-nowrap
-                            ${ieState[nota.id] === 'saved'
-                              ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
-                              : getIeDraft(nota) !== (nota.ie_tomador || '')
-                                ? 'border-slate-600 text-slate-300 hover:text-white hover:border-slate-400'
-                                : 'border-slate-700 text-slate-600 cursor-not-allowed'}`}
-                        >
-                          {ieState[nota.id] === 'saving' ? '...' : ieState[nota.id] === 'saved' ? '✓ Salvo' : 'Salvar'}
-                        </button>
-                      </div>
-                      {ieState[nota.id] === 'erro' && (
-                        <p className="text-xs text-red-400 mt-1">Erro ao salvar</p>
-                      )}
+                      <select
+                        value={getIeDraft(nota)}
+                        onChange={e => setIeDraft(prev => ({ ...prev, [nota.id]: e.target.value }))}
+                        className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 w-40
+                                   focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                      >
+                        <option value="">Selecionar...</option>
+                        {fazendas.map(f => (
+                          <option key={f.id} value={f.ie_tomador}>{f.nome}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
@@ -602,6 +578,7 @@ export default function ProtocolarPage() {
                         type="text"
                         value={extra.pedidos}
                         onChange={e => setExtra(nota.id, { pedidos: e.target.value })}
+                        onKeyDown={e => { if (e.key === 'Enter') salvarNota(nota.id) }}
                         placeholder="Nº pedido"
                         className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 w-28
                                    placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
@@ -617,6 +594,22 @@ export default function ProtocolarPage() {
                                    focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                       />
                     </div>
+
+                    <button
+                      onClick={() => salvarNota(nota.id)}
+                      disabled={rs === 'saving' || (!rowChanged && rs !== 'saved')}
+                      className={`text-xs px-3 py-1.5 rounded-lg border transition-all whitespace-nowrap
+                        ${rs === 'saved'
+                          ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
+                          : rowChanged
+                            ? 'border-slate-600 text-slate-300 hover:text-white hover:border-slate-400'
+                            : 'border-slate-700 text-slate-600 cursor-not-allowed'}`}
+                    >
+                      {rs === 'saving' ? 'Salvando...' : rs === 'saved' ? '✓ Salvo' : 'Salvar'}
+                    </button>
+                    {rs === 'erro' && (
+                      <p className="text-xs text-red-400">Erro ao salvar</p>
+                    )}
                   </div>
                 </div>
               )

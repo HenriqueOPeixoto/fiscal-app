@@ -18,8 +18,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params
   const body = await req.json()
 
-  if (body.ieTomador !== undefined) {
-    const ieTomador = normalizeIE(body.ieTomador || '')
+  const notaAtual = await client.execute({
+    sql: 'SELECT numero, ie_tomador, responsavel_pagamento, forma_pagamento, pedidos, vencimento FROM notas WHERE id = ?',
+    args: [id],
+  })
+  if (!notaAtual.rows.length) {
+    return NextResponse.json({ error: 'Nota não encontrada' }, { status: 404 })
+  }
+  const atual = notaAtual.rows[0] as any
+
+  const updates: string[] = []
+  const args: any[] = []
+  const mudancas: string[] = []
+
+  const registrar = (coluna: string, label: string, valorNovo: string | null, valorAtual: string | null) => {
+    if (valorNovo === (valorAtual ?? null)) return
+    updates.push(`${coluna} = ?`)
+    args.push(valorNovo)
+    mudancas.push(`${label}: "${valorAtual || '—'}" → "${valorNovo || '—'}"`)
+  }
+
+  // IE em branco significa "não alterar" — notas de serviço (NFS-e) legitimamente ficam sem IE
+  if (body.ieTomador !== undefined && body.ieTomador !== '') {
+    const ieTomador = normalizeIE(body.ieTomador)
     if (!ieTomador) {
       return NextResponse.json({ error: 'Informe a IE da fazenda' }, { status: 400 })
     }
@@ -27,23 +48,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!fazenda.rows.length) {
       return NextResponse.json({ error: 'Fazenda (IE) não cadastrada' }, { status: 400 })
     }
-    await client.execute({ sql: `UPDATE notas SET ie_tomador = ? WHERE id = ?`, args: [ieTomador, id] })
-
-    const userId = (session.user as any).id
-    const userName = session.user?.name || userId
-    const notaResult = await client.execute({ sql: 'SELECT numero FROM notas WHERE id = ?', args: [id] })
-    const numero = (notaResult.rows[0] as any)?.numero
-    await log(userId, userName, 'nota_ie_alterada', `Alterou a IE da NF ${numero} para ${ieTomador}`)
-
-    return NextResponse.json({ success: true })
+    registrar('ie_tomador', 'IE', ieTomador, atual.ie_tomador)
+  }
+  if (body.responsavelPagamento !== undefined) {
+    registrar('responsavel_pagamento', 'Responsável Pagamento', (body.responsavelPagamento ?? '').trim() || null, atual.responsavel_pagamento)
+  }
+  if (body.formaPagamento !== undefined) {
+    registrar('forma_pagamento', 'Forma de Pagamento', (body.formaPagamento ?? '').trim() || null, atual.forma_pagamento)
+  }
+  if (body.pedidos !== undefined) {
+    registrar('pedidos', 'Pedidos', (body.pedidos ?? '').trim() || null, atual.pedidos)
+  }
+  if (body.vencimento !== undefined) {
+    registrar('vencimento', 'Vencimento', body.vencimento || null, atual.vencimento)
   }
 
-  const responsavel = (body.responsavelPagamento ?? '').trim() || null
+  if (!updates.length) {
+    return NextResponse.json({ error: 'Nada para atualizar' }, { status: 400 })
+  }
 
-  await client.execute({
-    sql: `UPDATE notas SET responsavel_pagamento = ? WHERE id = ?`,
-    args: [responsavel, id],
-  })
+  args.push(id)
+  await client.execute({ sql: `UPDATE notas SET ${updates.join(', ')} WHERE id = ?`, args })
+
+  const userId = (session.user as any).id
+  const userName = session.user?.name || userId
+  await log(userId, userName, 'nota_atualizada', `Atualizou NF ${atual.numero} — ${mudancas.join('; ')}`)
 
   return NextResponse.json({ success: true })
 }

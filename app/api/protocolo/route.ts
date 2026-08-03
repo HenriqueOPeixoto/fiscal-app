@@ -57,10 +57,12 @@ export async function POST(req: NextRequest) {
     args: [id, notaId, dataRecebimento, responsavelFormaPag || null, formaPagamento || null, pedidos || null, vencimento || null, userId],
   })
 
-  // Clear any previous estorno justification
+  // Clear any previous estorno justification and keep the nota's own record of these fields in sync,
+  // so they survive (visible to compras) even if this protocolo is later estornado
   await client.execute({
-    sql: `UPDATE notas SET estorno_justificativa = NULL, estorno_em = NULL, estornada_por = NULL WHERE id = ?`,
-    args: [notaId],
+    sql: `UPDATE notas SET estorno_justificativa = NULL, estorno_em = NULL, estornada_por = NULL,
+          responsavel_pagamento = ?, forma_pagamento = ?, pedidos = ?, vencimento = ? WHERE id = ?`,
+    args: [responsavelFormaPag || null, formaPagamento || null, pedidos || null, vencimento || null, notaId],
   })
 
   const notaRow = nota.rows[0] as any
