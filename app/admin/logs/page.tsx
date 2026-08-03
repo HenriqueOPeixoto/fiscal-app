@@ -16,6 +16,14 @@ const ACAO_LABEL: Record<string, string> = {
   fazenda_excluida:    'Fazenda excluída',
 }
 
+function formatDateTimeBR(str?: string): string {
+  if (!str) return ''
+  const [datePart, timePart] = str.replace('T', ' ').split(' ')
+  const [y, m, d] = (datePart || '').split('-')
+  if (!y || !m || !d) return str
+  return timePart ? `${d}-${m}-${y} ${timePart.slice(0, 5)}` : `${d}-${m}-${y}`
+}
+
 const ACAO_COR: Record<string, string> = {
   nota_importada:      'bg-emerald-500/10 text-emerald-400',
   nota_cancelada:      'bg-red-500/10 text-red-400',
@@ -115,7 +123,7 @@ export default function LogsPage() {
             {logs.map((l: any) => (
               <tr key={l.id} className="hover:bg-slate-800/30 transition-colors">
                 <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap font-mono">
-                  {l.criado_em?.replace('T', ' ').slice(0, 16)}
+                  {formatDateTimeBR(l.criado_em)}
                 </td>
                 <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap">
                   {l.usuario_nome}

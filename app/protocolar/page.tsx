@@ -23,6 +23,11 @@ function ultimoDiaMesAtual(): string {
   const d = new Date()
   return formatDate(new Date(d.getFullYear(), d.getMonth() + 1, 0))
 }
+function formatDateBR(dateStr?: string): string {
+  if (!dateStr) return ''
+  const [y, m, d] = dateStr.slice(0, 10).split('-')
+  return y && m && d ? `${d}-${m}-${y}` : dateStr
+}
 
 export default function ProtocolarPage() {
   const { data: session } = useSession()
@@ -289,7 +294,7 @@ export default function ProtocolarPage() {
         <div>
           <label className="block text-xs font-medium text-slate-400 mb-1.5">Data de Recebimento</label>
           <div className="bg-slate-800/50 border border-slate-800 text-slate-300 text-sm rounded-lg px-3 py-2">
-            {dataRecebimento ? dataRecebimento.split('-').reverse().join('/') : '—'}
+            {dataRecebimento ? formatDateBR(dataRecebimento) : '—'}
           </div>
         </div>
         <div className="flex flex-col gap-1">
@@ -493,7 +498,7 @@ export default function ProtocolarPage() {
                       <p className="text-sm font-semibold text-white">
                         {Number(nota.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </p>
-                      <p className="text-xs text-slate-500">{nota.dt_emissao?.slice(0, 10)}</p>
+                      <p className="text-xs text-slate-500">{formatDateBR(nota.dt_emissao)}</p>
                     </div>
                   </label>
                   <div className="mt-1 ml-8 flex justify-end">
@@ -511,7 +516,7 @@ export default function ProtocolarPage() {
                       <span className="text-red-400 text-xs mt-0.5">⚠</span>
                       <div>
                         <p className="text-xs font-medium text-red-400">
-                          Estornada por {nota.estornada_por} em {nota.estorno_em?.slice(0, 10)}
+                          Estornada por {nota.estornada_por} em {formatDateBR(nota.estorno_em)}
                         </p>
                         <p className="text-xs text-red-300/80 mt-0.5">{nota.estorno_justificativa}</p>
                       </div>

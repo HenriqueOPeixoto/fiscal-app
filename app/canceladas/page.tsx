@@ -8,6 +8,12 @@ const STATUS_LABEL: Record<string, string> = {
   'NFS-e de Substituição Gerada': 'Substituição',
 }
 
+function formatDateBR(dateStr?: string): string {
+  if (!dateStr) return ''
+  const [y, m, d] = dateStr.slice(0, 10).split('-')
+  return y && m && d ? `${d}-${m}-${y}` : dateStr
+}
+
 export default function CanceladasPage() {
   const { data: session } = useSession()
   const [notas, setNotas] = useState<any[]>([])
@@ -129,7 +135,7 @@ export default function CanceladasPage() {
                 <td className="px-4 py-3 text-sm text-white">
                   {Number(n.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-400">{n.dt_emissao?.slice(0, 10)}</td>
+                <td className="px-4 py-3 text-xs text-slate-400">{formatDateBR(n.dt_emissao)}</td>
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     n.status === 'Cancelamento de NF-e homologado'
@@ -139,7 +145,7 @@ export default function CanceladasPage() {
                     {STATUS_LABEL[n.status] ?? n.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-500">{n.importado_em?.slice(0, 10)}</td>
+                <td className="px-4 py-3 text-xs text-slate-500">{formatDateBR(n.importado_em)}</td>
               </tr>
             ))}
           </tbody>

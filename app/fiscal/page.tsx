@@ -6,6 +6,11 @@ import { useSession } from 'next-auth/react'
 function formatDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+function formatDateBR(dateStr?: string): string {
+  if (!dateStr) return ''
+  const [y, m, d] = dateStr.slice(0, 10).split('-')
+  return y && m && d ? `${d}-${m}-${y}` : dateStr
+}
 function primeiroDiaMesAtual(): string {
   const d = new Date()
   return formatDate(new Date(d.getFullYear(), d.getMonth(), 1))
@@ -304,11 +309,11 @@ export default function FiscalPage() {
                 <td className="px-4 py-3 text-sm text-white">
                   {Number(p.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-400">{p.dt_emissao?.slice(0, 10)}</td>
-                <td className="px-4 py-3 text-xs text-slate-400">{p.data_recebimento?.slice(0, 10)}</td>
+                <td className="px-4 py-3 text-xs text-slate-400">{formatDateBR(p.dt_emissao)}</td>
+                <td className="px-4 py-3 text-xs text-slate-400">{formatDateBR(p.data_recebimento)}</td>
                 <td className="px-4 py-3 text-xs text-slate-300">{p.forma_pagamento || '—'}</td>
                 <td className="px-4 py-3 text-xs text-slate-300">{p.pedidos || '—'}</td>
-                <td className="px-4 py-3 text-xs text-slate-300">{p.vencimento?.slice(0, 10) || '—'}</td>
+                <td className="px-4 py-3 text-xs text-slate-300">{p.vencimento ? formatDateBR(p.vencimento) : '—'}</td>
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     p.concluida
