@@ -8,7 +8,10 @@ import { normalizeIE, normalizeNumero, stripNul, chaveValida, limparChave } from
 
 const SISTEMA_XML_USER_NOME = 'Importação Automática (XML)'
 
-const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' })
+// parseTagValue: false — sem isso, o parser coage valores numéricos automaticamente e derruba zeros à
+// esquerda (ex: CNPJ "04217319000205" virava o número 4217319000205, com 13 dígitos). O código já converte
+// cada campo explicitamente com String()/parseFloat(), então não depende da coação automática de tipos.
+const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_', parseTagValue: false })
 
 type NotaExtraida = {
   numero: string
@@ -16,13 +19,16 @@ type NotaExtraida = {
   emissorNome: string
   cnpjEmissor: string
   ieTomador: string
+  // CT-e: a fazenda pode aparecer como destinatário OU remetente, dependendo do sentido do frete —
+  // o campo "tomador do serviço" do próprio CT-e nem sempre indica qual das duas é a nossa fazenda
+  ieTomadorAlternativo?: string
   chave: string
   dtEmissao: string
 }
 
 function extrairChave(id: unknown): string {
-  // O atributo Id vem como "NFe"+chave ou "NFS"+chave — a chave em si pode ser alfanumérica
-  return limparChave(String(id || '').replace(/^NFe|^NFS/i, ''))
+  // O atributo Id vem como "NFe"/"NFS"/"CTe" + chave — a chave em si pode ser alfanumérica
+  return limparChave(String(id || '').replace(/^NFe|^NFS|^CTe/i, ''))
 }
 
 // NF-e — layout nacional (Sefaz), estável há anos: nfeProc > NFe > infNFe (ou NFe > infNFe sem o wrapper de protocolo)
@@ -63,6 +69,29 @@ function extrairNFSe(doc: any): NotaExtraida | null {
   }
 }
 
+// CT-e — layout nacional (Sefaz), mesma família do NF-e: cteProc > CTe > infCte (ou CTe > infCte sem o wrapper de protocolo).
+// Quem emite é a transportadora (emit); a fazenda pode aparecer como remetente (rem) OU destinatário (dest),
+// dependendo se ela está comprando (recebendo a carga) ou vendendo (expedindo a carga) — por isso os dois viram candidatos.
+function extrairCTe(doc: any): NotaExtraida | null {
+  const infCte = doc?.cteProc?.CTe?.infCte ?? doc?.CTe?.infCte
+  if (!infCte) return null
+  const ide = infCte.ide ?? {}
+  const emit = infCte.emit ?? {}
+  const dest = infCte.dest ?? {}
+  const rem = infCte.rem ?? {}
+  const vPrest = infCte.vPrest ?? {}
+  return {
+    numero: normalizeNumero(String(ide.nCT ?? '')),
+    valor: parseFloat(String(vPrest.vTPrest ?? '0')),
+    emissorNome: stripNul(String(emit.xNome ?? '')).trim(),
+    cnpjEmissor: String(emit.CNPJ ?? '').replace(/\D/g, ''),
+    ieTomador: normalizeIE(String(dest.IE ?? '')),
+    ieTomadorAlternativo: normalizeIE(String(rem.IE ?? '')) || undefined,
+    chave: extrairChave(infCte['@_Id']),
+    dtEmissao: stripNul(String(ide.dhEmi ?? '')).slice(0, 10),
+  }
+}
+
 async function garantirSubpastas(base: string) {
   await mkdir(path.join(base, 'processados'), { recursive: true })
   await mkdir(path.join(base, 'erros'), { recursive: true })
@@ -88,18 +117,18 @@ async function processarArquivo(base: string, nomeArquivo: string) {
   try {
     const conteudo = await readFile(caminho, 'utf8')
     const doc = parser.parse(conteudo)
-    nota = extrairNFe(doc) ?? extrairNFSe(doc)
+    nota = extrairNFe(doc) ?? extrairNFSe(doc) ?? extrairCTe(doc)
   } catch (e: any) {
     await registrarErro(base, nomeArquivo, `XML inválido: ${e.message}`)
     return
   }
 
   if (!nota) {
-    await registrarErro(base, nomeArquivo, 'Tipo de XML não reconhecido (não é NF-e nem NFS-e)')
+    await registrarErro(base, nomeArquivo, 'Tipo de XML não reconhecido (não é NF-e, NFS-e nem CT-e)')
     return
   }
 
-  const { numero, valor, emissorNome, cnpjEmissor, ieTomador, chave, dtEmissao } = nota
+  const { numero, valor, emissorNome, cnpjEmissor, chave, dtEmissao } = nota
 
   if (!numero || !emissorNome || !chave || !valor || isNaN(valor)) {
     await registrarErro(base, nomeArquivo, `Dados obrigatórios ausentes no XML (NF ${numero || '?'})`)
@@ -111,11 +140,17 @@ async function processarArquivo(base: string, nomeArquivo: string) {
     return
   }
 
-  // Notas fiscais de serviço (NFS-e) não possuem Tomador IE — só validamos a fazenda quando a nota informa uma IE
-  if (ieTomador) {
-    const fazenda = await client.execute({ sql: 'SELECT 1 FROM fazendas WHERE ie_tomador = ?', args: [ieTomador] })
-    if (!fazenda.rows.length) {
-      await registrarErro(base, nomeArquivo, `Fazenda não cadastrada (IE ${ieTomador}) — NF ${numero}`)
+  // Notas fiscais de serviço (NFS-e) não possuem Tomador IE, e no CT-e a fazenda pode estar como
+  // destinatário OU remetente — só dá erro se houver IE(s) informada(s) e nenhuma bater com fazenda cadastrada
+  const candidatosIE = [nota.ieTomador, nota.ieTomadorAlternativo].filter((ie): ie is string => !!ie)
+  let ieTomador = ''
+  if (candidatosIE.length) {
+    for (const candidato of candidatosIE) {
+      const fazenda = await client.execute({ sql: 'SELECT 1 FROM fazendas WHERE ie_tomador = ?', args: [candidato] })
+      if (fazenda.rows.length) { ieTomador = candidato; break }
+    }
+    if (!ieTomador) {
+      await registrarErro(base, nomeArquivo, `Fazenda não cadastrada (IE ${candidatosIE.join(' ou ')}) — NF ${numero}`)
       return
     }
   }
