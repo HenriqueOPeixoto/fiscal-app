@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { client } from '@/lib/db'
 import { log } from '@/lib/logger'
 import { randomUUID } from 'crypto'
-import { normalizeIE, chaveValida } from '@/lib/notasHelpers'
+import { normalizeIE, chaveValida, limparChave } from '@/lib/notasHelpers'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const emissorNome = String(body.emissorNome || '').trim()
   const cnpjEmissor = String(body.cnpjEmissor || '').replace(/\D/g, '')
   const ieTomador = normalizeIE(body.ieTomador || '')
-  const chave = String(body.chave || '').replace(/\D/g, '')
+  const chave = limparChave(body.chave || '')
   const dtEmissao = String(body.dtEmissao || '').trim()
 
   if (!numero || !emissorNome || !cnpjEmissor || !ieTomador || !chave || !dtEmissao || !valor || isNaN(valor)) {

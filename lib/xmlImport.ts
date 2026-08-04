@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto'
 import { XMLParser } from 'fast-xml-parser'
 import { client, SISTEMA_XML_USER_ID } from './db'
 import { log } from './logger'
-import { normalizeIE, normalizeNumero, stripNul, chaveValida } from './notasHelpers'
+import { normalizeIE, normalizeNumero, stripNul, chaveValida, limparChave } from './notasHelpers'
 
 const SISTEMA_XML_USER_NOME = 'Importação Automática (XML)'
 
@@ -21,7 +21,8 @@ type NotaExtraida = {
 }
 
 function extrairChave(id: unknown): string {
-  return String(id || '').replace(/\D/g, '')
+  // O atributo Id vem como "NFe"+chave ou "NFS"+chave — a chave em si pode ser alfanumérica
+  return limparChave(String(id || '').replace(/^NFe|^NFS/i, ''))
 }
 
 // NF-e — layout nacional (Sefaz), estável há anos: nfeProc > NFe > infNFe (ou NFe > infNFe sem o wrapper de protocolo)

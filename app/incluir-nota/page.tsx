@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { limparChave } from '@/lib/notasHelpers'
 
 const emptyForm = () => ({
   numero: '',
@@ -136,7 +137,7 @@ export default function IncluirNotaPage() {
           <input
             type="text"
             value={form.chave}
-            onChange={e => setField({ chave: e.target.value.replace(/\D/g, '') })}
+            onChange={e => setField({ chave: limparChave(e.target.value) })}
             placeholder="Até 50 dígitos"
             required
             className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 font-mono

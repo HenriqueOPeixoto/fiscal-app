@@ -5,7 +5,7 @@ import { client } from '@/lib/db'
 import { log } from '@/lib/logger'
 import { randomUUID } from 'crypto'
 import * as XLSX from 'xlsx'
-import { normalizeIE, normalizeNumero, stripNul } from '@/lib/notasHelpers'
+import { normalizeIE, normalizeNumero, stripNul, limparChave } from '@/lib/notasHelpers'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     const emissorNome = stripNul(String(row['Emissor Nome'] || '')).trim()
     const cnpjEmissor = String(row['Emissor CNPJ/CPF'] || '').replace(/\D/g, '')
     const ieTomador = normalizeIE(row['Tomador IE'] || '')
-    const chave = String(row['Chave'] || '').replace(/\D/g, '')
+    const chave = limparChave(row['Chave'] || '')
     const dtEmissaoRaw = row['DtEmi']
     const rawStatus1 = String(row['Status_1'] || '').trim()
     const rawStatus = String(row['Status'] || '').trim()
