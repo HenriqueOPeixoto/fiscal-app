@@ -5,6 +5,7 @@ import { client } from '@/lib/db'
 import { log } from '@/lib/logger'
 import { randomUUID } from 'crypto'
 import * as XLSX from 'xlsx'
+import { normalizeIE, normalizeNumero, stripNul } from '@/lib/notasHelpers'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -55,13 +56,6 @@ export async function POST(req: NextRequest) {
       debug: { colunas, statusVistos: [] },
     }, { status: 401 })
   }
-
-  const normalizeIE = (ie: string) => String(ie).replace(/\D/g, '').replace(/^0+/, '')
-  const normalizeNumero = (n: string) => String(n).trim().replace(/^0+(?=\d)/, '')
-  // Postgres rejects NUL bytes in text columns outright ("null character not permitted"),
-  // unlike SQLite which stored them silently — strip them from free-text fields coming from the spreadsheet
-  const NUL = String.fromCharCode(0)
-  const stripNul = (s: string) => s.split(NUL).join('')
 
   // Load registered IEs once before the loop, normalized for comparison
   const fazendasResult = await client.execute('SELECT ie_tomador FROM fazendas')

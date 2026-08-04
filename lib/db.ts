@@ -1,6 +1,12 @@
 import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
+import bcrypt from 'bcryptjs'
+import { randomUUID } from 'crypto'
 import * as schema from './schema'
+
+// Fixed id for the system user that attributes notes imported automatically from XML —
+// this process has no logged-in session, but notas.importado_por_id is a required FK
+export const SISTEMA_XML_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -132,4 +138,14 @@ export async function initDB() {
 
   // Supports "ORDER BY importado_em DESC" in /api/notas without a temp b-tree sort when the table grows large
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_notas_importado_em ON notas(importado_em)`)
+
+  // System user that attributes notas imported automatically from the XML folder watcher —
+  // never logs in, so the password hash is just a random unusable value
+  const senhaHash = await bcrypt.hash(randomUUID(), 10)
+  await pool.query({
+    text: `INSERT INTO usuarios (id, nome, email, senha, perfil, ativo)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (email) DO NOTHING`,
+    values: [SISTEMA_XML_USER_ID, 'Importação Automática (XML)', 'xml-importer@sistema.local', senhaHash, 'compras', true],
+  })
 }

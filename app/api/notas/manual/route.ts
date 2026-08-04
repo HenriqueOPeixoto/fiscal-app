@@ -4,8 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { client } from '@/lib/db'
 import { log } from '@/lib/logger'
 import { randomUUID } from 'crypto'
-
-const normalizeIE = (ie: string) => String(ie).replace(/\D/g, '').replace(/^0+/, '')
+import { normalizeIE, chaveValida } from '@/lib/notasHelpers'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -29,8 +28,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Preencha todos os campos obrigatórios' }, { status: 400 })
   }
 
-  if (chave.length !== 44 && chave.length !== 50) {
-    return NextResponse.json({ error: 'Chave de acesso deve ter 44 dígitos (NF-e) ou 50 dígitos (NFS-e)' }, { status: 400 })
+  if (!chaveValida(chave)) {
+    return NextResponse.json({ error: 'Chave de acesso deve ter no máximo 50 dígitos' }, { status: 400 })
   }
 
   const fazenda = await client.execute({

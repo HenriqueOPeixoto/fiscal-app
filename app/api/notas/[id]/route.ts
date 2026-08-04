@@ -3,8 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { client } from '@/lib/db'
 import { log } from '@/lib/logger'
-
-const normalizeIE = (ie: string) => String(ie).replace(/\D/g, '').replace(/^0+/, '')
+import { normalizeIE } from '@/lib/notasHelpers'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)

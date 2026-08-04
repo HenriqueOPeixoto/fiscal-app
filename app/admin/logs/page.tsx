@@ -5,6 +5,8 @@ import { useSession } from 'next-auth/react'
 
 const ACAO_LABEL: Record<string, string> = {
   nota_importada:      'Importação',
+  nota_importada_xml:  'Importação automática (XML)',
+  nota_xml_erro:       'Erro na importação de XML',
   nota_cancelada:      'Nota cancelada',
   protocolo_criado:    'Protocolo criado',
   protocolo_estornado: 'Estorno',
@@ -26,6 +28,8 @@ function formatDateTimeBR(str?: string): string {
 
 const ACAO_COR: Record<string, string> = {
   nota_importada:      'bg-emerald-500/10 text-emerald-400',
+  nota_importada_xml:  'bg-emerald-500/10 text-emerald-300',
+  nota_xml_erro:       'bg-amber-500/10 text-amber-400',
   nota_cancelada:      'bg-red-500/10 text-red-400',
   protocolo_criado:    'bg-blue-500/10 text-blue-400',
   protocolo_estornado: 'bg-orange-500/10 text-orange-400',
