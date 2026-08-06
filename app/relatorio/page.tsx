@@ -32,7 +32,7 @@ export default function RelatorioPage() {
   const [notas, setNotas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filtros, setFiltros] = useState({
-    numero: '', emissor: '', fazenda: '',
+    numero: '', emissor: '', fazenda: '', pedido: '',
     dtEmissaoInicio: primeiroDiaMesAtual(), dtEmissaoFim: ultimoDiaMesAtual(),
   })
   const [somenteEstornadas, setSomenteEstornadas] = useState(false)
@@ -52,6 +52,7 @@ export default function RelatorioPage() {
       const faz = (n.fazenda_nome || n.ie_tomador || '').toLowerCase()
       if (!faz.includes(filtros.fazenda.toLowerCase())) return false
     }
+    if (filtros.pedido && !(n.pedidos || '').toLowerCase().includes(filtros.pedido.toLowerCase())) return false
     const dtEmissao = n.dt_emissao?.slice(0, 10) || ''
     if (filtros.dtEmissaoInicio && dtEmissao < filtros.dtEmissaoInicio) return false
     if (filtros.dtEmissaoFim && dtEmissao > filtros.dtEmissaoFim) return false
@@ -90,7 +91,7 @@ export default function RelatorioPage() {
 
   useEffect(() => {
     setPagina(1)
-  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.dtEmissaoInicio, filtros.dtEmissaoFim, somenteEstornadas, sortConfig.key, sortConfig.direction])
+  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.pedido, filtros.dtEmissaoInicio, filtros.dtEmissaoFim, somenteEstornadas, sortConfig.key, sortConfig.direction])
 
   function handleSort(key: string) {
     setSortConfig(prev => prev.key === key
@@ -116,6 +117,7 @@ export default function RelatorioPage() {
           { key: 'numero', placeholder: 'Nº nota', width: 'w-28' },
           { key: 'emissor', placeholder: 'Emissor', width: 'w-48' },
           { key: 'fazenda', placeholder: 'Fazenda', width: 'w-36' },
+          { key: 'pedido', placeholder: 'Pedido', width: 'w-32' },
         ].map(({ key, placeholder, width }) => (
           <input
             key={key}
@@ -158,7 +160,7 @@ export default function RelatorioPage() {
         </button>
         {temFiltro && (
           <button
-            onClick={() => { setFiltros({ numero: '', emissor: '', fazenda: '', dtEmissaoInicio: '', dtEmissaoFim: '' }); setSomenteEstornadas(false) }}
+            onClick={() => { setFiltros({ numero: '', emissor: '', fazenda: '', pedido: '', dtEmissaoInicio: '', dtEmissaoFim: '' }); setSomenteEstornadas(false) }}
             className="text-xs text-slate-500 hover:text-slate-300 px-2 underline"
           >
             Limpar filtros
