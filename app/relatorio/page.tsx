@@ -34,6 +34,7 @@ export default function RelatorioPage() {
   const [filtros, setFiltros] = useState({
     numero: '', emissor: '', fazenda: '', pedido: '',
     dtEmissaoInicio: primeiroDiaMesAtual(), dtEmissaoFim: ultimoDiaMesAtual(),
+    vencimentoInicio: '', vencimentoFim: '',
   })
   const [somenteEstornadas, setSomenteEstornadas] = useState(false)
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' })
@@ -56,6 +57,9 @@ export default function RelatorioPage() {
     const dtEmissao = n.dt_emissao?.slice(0, 10) || ''
     if (filtros.dtEmissaoInicio && dtEmissao < filtros.dtEmissaoInicio) return false
     if (filtros.dtEmissaoFim && dtEmissao > filtros.dtEmissaoFim) return false
+    const vencimento = n.vencimento?.slice(0, 10) || ''
+    if (filtros.vencimentoInicio && (!vencimento || vencimento < filtros.vencimentoInicio)) return false
+    if (filtros.vencimentoFim && (!vencimento || vencimento > filtros.vencimentoFim)) return false
     if (somenteEstornadas && !n.estorno_justificativa) return false
     return true
   })
@@ -92,7 +96,7 @@ export default function RelatorioPage() {
 
   useEffect(() => {
     setPagina(1)
-  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.pedido, filtros.dtEmissaoInicio, filtros.dtEmissaoFim, somenteEstornadas, sortConfig.key, sortConfig.direction])
+  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.pedido, filtros.dtEmissaoInicio, filtros.dtEmissaoFim, filtros.vencimentoInicio, filtros.vencimentoFim, somenteEstornadas, sortConfig.key, sortConfig.direction])
 
   function handleSort(key: string) {
     setSortConfig(prev => prev.key === key
@@ -130,24 +134,49 @@ export default function RelatorioPage() {
                         placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30`}
           />
         ))}
-        <div className="flex items-center gap-1.5">
-          <input
-            type="date"
-            value={filtros.dtEmissaoInicio}
-            onChange={e => setFiltros(prev => ({ ...prev, dtEmissaoInicio: e.target.value }))}
-            className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
-                       focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-            title="Data de Emissão (início)"
-          />
-          <span className="text-slate-600 text-xs">até</span>
-          <input
-            type="date"
-            value={filtros.dtEmissaoFim}
-            onChange={e => setFiltros(prev => ({ ...prev, dtEmissaoFim: e.target.value }))}
-            className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
-                       focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-            title="Data de Emissão (fim)"
-          />
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-slate-500">Data de Emissão</label>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="date"
+              value={filtros.dtEmissaoInicio}
+              onChange={e => setFiltros(prev => ({ ...prev, dtEmissaoInicio: e.target.value }))}
+              className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                         focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              title="Data de Emissão (início)"
+            />
+            <span className="text-slate-600 text-xs">até</span>
+            <input
+              type="date"
+              value={filtros.dtEmissaoFim}
+              onChange={e => setFiltros(prev => ({ ...prev, dtEmissaoFim: e.target.value }))}
+              className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                         focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              title="Data de Emissão (fim)"
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-slate-500">Vencimento</label>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="date"
+              value={filtros.vencimentoInicio}
+              onChange={e => setFiltros(prev => ({ ...prev, vencimentoInicio: e.target.value }))}
+              className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                         focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              title="Vencimento (início)"
+            />
+            <span className="text-slate-600 text-xs">até</span>
+            <input
+              type="date"
+              value={filtros.vencimentoFim}
+              onChange={e => setFiltros(prev => ({ ...prev, vencimentoFim: e.target.value }))}
+              className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                         focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              title="Vencimento (fim)"
+            />
+          </div>
         </div>
         <button
           onClick={() => setSomenteEstornadas(prev => !prev)}
@@ -161,7 +190,7 @@ export default function RelatorioPage() {
         </button>
         {temFiltro && (
           <button
-            onClick={() => { setFiltros({ numero: '', emissor: '', fazenda: '', pedido: '', dtEmissaoInicio: '', dtEmissaoFim: '' }); setSomenteEstornadas(false) }}
+            onClick={() => { setFiltros({ numero: '', emissor: '', fazenda: '', pedido: '', dtEmissaoInicio: '', dtEmissaoFim: '', vencimentoInicio: '', vencimentoFim: '' }); setSomenteEstornadas(false) }}
             className="text-xs text-slate-500 hover:text-slate-300 px-2 underline"
           >
             Limpar filtros

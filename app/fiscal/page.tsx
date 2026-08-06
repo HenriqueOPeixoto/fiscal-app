@@ -29,6 +29,7 @@ export default function FiscalPage() {
   const [filtros, setFiltros] = useState({
     numero: '', emissor: '', fazenda: '',
     dtEmissaoInicio: primeiroDiaMesAtual(), dtEmissaoFim: ultimoDiaMesAtual(),
+    vencimentoInicio: '', vencimentoFim: '',
   })
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' })
   const [concluindo, setConcluindo] = useState<string | null>(null)
@@ -91,6 +92,9 @@ export default function FiscalPage() {
     const dtEmissao = p.dt_emissao?.slice(0, 10) || ''
     if (filtros.dtEmissaoInicio && dtEmissao < filtros.dtEmissaoInicio) return false
     if (filtros.dtEmissaoFim && dtEmissao > filtros.dtEmissaoFim) return false
+    const vencimento = p.vencimento?.slice(0, 10) || ''
+    if (filtros.vencimentoInicio && (!vencimento || vencimento < filtros.vencimentoInicio)) return false
+    if (filtros.vencimentoFim && (!vencimento || vencimento > filtros.vencimentoFim)) return false
     return true
   })
   const temFiltro = Object.values(filtros).some(v => v !== '')
@@ -125,7 +129,7 @@ export default function FiscalPage() {
 
   useEffect(() => {
     setPagina(1)
-  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.dtEmissaoInicio, filtros.dtEmissaoFim, sortConfig.key, sortConfig.direction, filtroMes, filtroStatus])
+  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.dtEmissaoInicio, filtros.dtEmissaoFim, filtros.vencimentoInicio, filtros.vencimentoFim, sortConfig.key, sortConfig.direction, filtroMes, filtroStatus])
 
   function handleSort(key: string) {
     setSortConfig(prev => prev.key === key
@@ -177,7 +181,7 @@ export default function FiscalPage() {
           {loading ? 'Carregando...' : `${protocolosFiltrados.length}${temFiltro ? ` de ${protocolos.length}` : ''} nota(s)`}
         </span>
       </div>
-      <div className="flex gap-2 mb-6 flex-wrap items-center">
+      <div className="flex gap-2 mb-6 flex-wrap items-end">
         {[
           { key: 'numero', placeholder: 'Nº nota', width: 'w-28' },
           { key: 'emissor', placeholder: 'Emissor', width: 'w-48' },
@@ -193,28 +197,53 @@ export default function FiscalPage() {
                         placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30`}
           />
         ))}
-        <div className="flex items-center gap-1.5">
-          <input
-            type="date"
-            value={filtros.dtEmissaoInicio}
-            onChange={e => setFiltros(prev => ({ ...prev, dtEmissaoInicio: e.target.value }))}
-            className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
-                       focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-            title="Data de Emissão (início)"
-          />
-          <span className="text-slate-600 text-xs">até</span>
-          <input
-            type="date"
-            value={filtros.dtEmissaoFim}
-            onChange={e => setFiltros(prev => ({ ...prev, dtEmissaoFim: e.target.value }))}
-            className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
-                       focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-            title="Data de Emissão (fim)"
-          />
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-slate-500">Data de Emissão</label>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="date"
+              value={filtros.dtEmissaoInicio}
+              onChange={e => setFiltros(prev => ({ ...prev, dtEmissaoInicio: e.target.value }))}
+              className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                         focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              title="Data de Emissão (início)"
+            />
+            <span className="text-slate-600 text-xs">até</span>
+            <input
+              type="date"
+              value={filtros.dtEmissaoFim}
+              onChange={e => setFiltros(prev => ({ ...prev, dtEmissaoFim: e.target.value }))}
+              className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                         focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              title="Data de Emissão (fim)"
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-slate-500">Vencimento</label>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="date"
+              value={filtros.vencimentoInicio}
+              onChange={e => setFiltros(prev => ({ ...prev, vencimentoInicio: e.target.value }))}
+              className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                         focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              title="Vencimento (início)"
+            />
+            <span className="text-slate-600 text-xs">até</span>
+            <input
+              type="date"
+              value={filtros.vencimentoFim}
+              onChange={e => setFiltros(prev => ({ ...prev, vencimentoFim: e.target.value }))}
+              className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                         focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              title="Vencimento (fim)"
+            />
+          </div>
         </div>
         {temFiltro && (
           <button
-            onClick={() => setFiltros({ numero: '', emissor: '', fazenda: '', dtEmissaoInicio: '', dtEmissaoFim: '' })}
+            onClick={() => setFiltros({ numero: '', emissor: '', fazenda: '', dtEmissaoInicio: '', dtEmissaoFim: '', vencimentoInicio: '', vencimentoFim: '' })}
             className="text-xs text-slate-500 hover:text-slate-300 px-2 underline"
           >
             Limpar filtros
