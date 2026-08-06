@@ -39,6 +39,7 @@ export default function RelatorioPage() {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' })
   const [pagina, setPagina] = useState(1)
   const PAGE_SIZE = 25
+  const [verJustificativa, setVerJustificativa] = useState<any>(null)
 
   useEffect(() => {
     fetch('/api/relatorio').then(r => r.json()).then(data => { setNotas(data); setLoading(false) })
@@ -102,7 +103,7 @@ export default function RelatorioPage() {
   }
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-white">Relatório</h1>
         <p className="text-slate-400 text-sm mt-1">Status de cada nota no sistema — protocolo e lançamento fiscal</p>
@@ -182,6 +183,7 @@ export default function RelatorioPage() {
                 { label: 'Data Protocolo', key: null },
                 { label: 'Responsável Lanç.', key: null },
                 { label: 'Concluída em', key: null },
+                { label: '', key: null },
               ].map(({ label, key }) => (
                 <th key={label} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                   {key ? (
@@ -196,7 +198,7 @@ export default function RelatorioPage() {
           <tbody className="divide-y divide-slate-800">
             {!loading && notasFiltradas.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-slate-500 text-sm">
+                <td colSpan={10} className="px-4 py-10 text-center text-slate-500 text-sm">
                   {notas.length === 0 ? 'Nenhuma nota encontrada' : 'Nenhuma nota corresponde aos filtros'}
                 </td>
               </tr>
@@ -220,6 +222,17 @@ export default function RelatorioPage() {
                   <td className="px-4 py-3 text-xs text-slate-400">{formatDateBR(n.data_recebimento) || '—'}</td>
                   <td className="px-4 py-3 text-xs text-slate-300">{n.responsavel_nome || '—'}</td>
                   <td className="px-4 py-3 text-xs text-slate-400">{formatDateBR(n.concluida_em) || '—'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {status.label === 'Estornada' && (
+                      <button
+                        onClick={() => setVerJustificativa(n)}
+                        className="text-xs text-red-400 hover:text-red-300 border border-red-900/50
+                                   hover:border-red-700 px-2.5 py-1 rounded transition-all whitespace-nowrap"
+                      >
+                        Ver justificativa
+                      </button>
+                    )}
+                  </td>
                 </tr>
               )
             })}
@@ -250,6 +263,34 @@ export default function RelatorioPage() {
           </div>
         )}
       </div>
+
+      {/* Modal: justificativa do estorno */}
+      {verJustificativa && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="text-white font-semibold text-base mb-1">Justificativa do estorno</h3>
+            <p className="text-slate-400 text-sm mb-4">
+              NF <span className="text-white font-medium">{verJustificativa.numero}</span> —{' '}
+              {verJustificativa.emissor_nome}
+            </p>
+            <div className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 mb-4">
+              <p className="text-sm text-slate-300">{verJustificativa.estorno_justificativa}</p>
+            </div>
+            <p className="text-xs text-slate-500 mb-6">
+              Estornada por <span className="text-slate-300">{verJustificativa.estornada_por}</span> em{' '}
+              {formatDateBR(verJustificativa.estorno_em)}
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setVerJustificativa(null)}
+                className="px-4 py-2 text-sm text-slate-400 hover:text-white border border-slate-700 hover:border-slate-600 rounded-lg transition-all"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
