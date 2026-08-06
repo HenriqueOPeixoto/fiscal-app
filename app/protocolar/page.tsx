@@ -44,7 +44,7 @@ export default function ProtocolarPage() {
   const [fazendas, setFazendas] = useState<{ id: string; nome: string; ie_tomador: string }[]>([])
   const [ieDraft, setIeDraft] = useState<Record<string, string>>({})
   const [filtros, setFiltros] = useState({
-    numero: '', emissor: '', fazenda: '',
+    numero: '', emissor: '', fazenda: '', responsavel: '',
     dtEmissaoInicio: primeiroDiaMesAtual(), dtEmissaoFim: ultimoDiaMesAtual(),
   })
   const [somenteEstornadas, setSomenteEstornadas] = useState(false)
@@ -56,6 +56,7 @@ export default function ProtocolarPage() {
   const [excluindo, setExcluindo] = useState(false)
   const [pagina, setPagina] = useState(1)
   const PAGE_SIZE = 25
+  const [gerandoPdf, setGerandoPdf] = useState(false)
 
   const perfil = (session?.user as any)?.perfil
 
@@ -103,6 +104,7 @@ export default function ProtocolarPage() {
       const faz = (n.fazenda_nome || n.ie_tomador || '').toLowerCase()
       if (!faz.includes(filtros.fazenda.toLowerCase())) return false
     }
+    if (filtros.responsavel && !(n.responsavel_pagamento || '').toLowerCase().includes(filtros.responsavel.toLowerCase())) return false
     const dtEmissao = n.dt_emissao?.slice(0, 10) || ''
     if (filtros.dtEmissaoInicio && dtEmissao < filtros.dtEmissaoInicio) return false
     if (filtros.dtEmissaoFim && dtEmissao > filtros.dtEmissaoFim) return false
@@ -139,7 +141,7 @@ export default function ProtocolarPage() {
 
   useEffect(() => {
     setPagina(1)
-  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.dtEmissaoInicio, filtros.dtEmissaoFim, somenteEstornadas, sortConfig.key, sortConfig.direction])
+  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.responsavel, filtros.dtEmissaoInicio, filtros.dtEmissaoFim, somenteEstornadas, sortConfig.key, sortConfig.direction])
 
   function handleSort(key: string) {
     setSortConfig(prev => prev.key === key
@@ -280,6 +282,55 @@ export default function ProtocolarPage() {
     setExcluindo(false)
   }
 
+  async function gerarPdf() {
+    setGerandoPdf(true)
+    // Abre a aba em branco já no clique (síncrono) — se esperarmos os imports dinâmicos
+    // resolverem antes de chamar window.open, o navegador não associa mais ao gesto do
+    // usuário e bloqueia como pop-up
+    const novaJanela = window.open('', '_blank')
+    try {
+      const { jsPDF } = await import('jspdf')
+      const { autoTable } = await import('jspdf-autotable')
+
+      const doc = new jsPDF({ orientation: 'landscape' })
+      doc.setFontSize(14)
+      doc.text('Notas Pendentes de Protocolo', 14, 15)
+      doc.setFontSize(9)
+      doc.setTextColor(100)
+      doc.text(`Emitido em ${formatDateBR(formatDate(new Date()))} — ${notasOrdenadas.length} nota(s)`, 14, 21)
+
+      autoTable(doc, {
+        startY: 26,
+        head: [['Número', 'Emissor', 'Fazenda', 'Valor', 'Emissão', 'Responsável', 'Forma Pag.', 'Vencimento']],
+        body: notasOrdenadas.map((n: any) => [
+          n.numero,
+          n.emissor_nome,
+          n.fazenda_nome || n.ie_tomador || '—',
+          Number(n.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+          formatDateBR(n.dt_emissao),
+          n.responsavel_pagamento || '—',
+          n.forma_pagamento || '—',
+          n.vencimento ? formatDateBR(n.vencimento) : '—',
+        ]),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [16, 185, 129] },
+      })
+
+      const blobUrl = doc.output('bloburl') as unknown as string
+      if (novaJanela) {
+        novaJanela.location.href = blobUrl
+      } else {
+        // pop-up bloqueado pelo navegador — cai para o download direto
+        doc.save(`notas-protocolar-${formatDate(new Date())}.pdf`)
+      }
+    } catch (e) {
+      console.error('Erro ao gerar PDF:', e)
+      novaJanela?.close()
+    } finally {
+      setGerandoPdf(false)
+    }
+  }
+
   return (
     <div className="p-8 max-w-6xl">
       <div className="mb-8">
@@ -335,6 +386,7 @@ export default function ProtocolarPage() {
           { key: 'numero', placeholder: 'Nº nota', width: 'w-28' },
           { key: 'emissor', placeholder: 'Emissor', width: 'w-48' },
           { key: 'fazenda', placeholder: 'Fazenda', width: 'w-36' },
+          { key: 'responsavel', placeholder: 'Responsável Pagamento', width: 'w-40' },
         ].map(({ key, placeholder, width }) => (
           <input
             key={key}
@@ -375,9 +427,17 @@ export default function ProtocolarPage() {
         >
           Somente estornadas
         </button>
+        <button
+          onClick={gerarPdf}
+          disabled={gerandoPdf || !notasOrdenadas.length}
+          className="px-3 py-2 text-sm rounded-lg border border-slate-700 text-slate-400
+                     hover:text-white hover:border-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+        >
+          {gerandoPdf ? 'Gerando PDF...' : 'Gerar PDF'}
+        </button>
         {temFiltro && (
           <button
-            onClick={() => { setFiltros({ numero: '', emissor: '', fazenda: '', dtEmissaoInicio: '', dtEmissaoFim: '' }); setSomenteEstornadas(false) }}
+            onClick={() => { setFiltros({ numero: '', emissor: '', fazenda: '', responsavel: '', dtEmissaoInicio: '', dtEmissaoFim: '' }); setSomenteEstornadas(false) }}
             className="text-xs text-slate-500 hover:text-slate-300 px-2 underline"
           >
             Limpar filtros
