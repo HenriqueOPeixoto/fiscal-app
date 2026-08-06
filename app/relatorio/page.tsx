@@ -174,6 +174,7 @@ export default function RelatorioPage() {
 
       {/* Tabela */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-800">
@@ -246,6 +247,7 @@ export default function RelatorioPage() {
             })}
           </tbody>
         </table>
+        </div>
 
         {!loading && notasOrdenadas.length > PAGE_SIZE && (
           <div className="px-5 py-3 border-t border-slate-800 flex items-center justify-between">
