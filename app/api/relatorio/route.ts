@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
   const result = await client.execute(`
     SELECT
-      n.id, n.numero, n.valor, n.emissor_nome, n.ie_tomador, n.dt_emissao,
+      n.id, n.numero, n.valor, n.emissor_nome, n.ie_tomador, n.dt_emissao, n.pedidos,
       n.estorno_justificativa, n.estorno_em, n.estornada_por,
       f.nome as fazenda_nome,
       p.id as protocolo_id, p.data_recebimento,
