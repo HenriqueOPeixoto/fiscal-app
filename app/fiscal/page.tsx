@@ -348,7 +348,7 @@ export default function FiscalPage() {
               </tr>
             )}
             {protocolosPaginados.map((p: any) => {
-              const venc = statusVencimento(p.vencimento)
+              const venc = p.concluida ? null : statusVencimento(p.vencimento)
               return (
               <tr key={p.id} className={`transition-colors ${
                 venc === 'vencido' ? 'bg-red-500/5 hover:bg-red-500/10'

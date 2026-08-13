@@ -255,7 +255,7 @@ export default function RelatorioPage() {
             )}
             {notasPaginadas.map((n: any) => {
               const status = getStatus(n)
-              const venc = statusVencimento(n.vencimento)
+              const venc = n.concluida ? null : statusVencimento(n.vencimento)
               return (
                 <tr key={n.id} className={`transition-colors ${
                   venc === 'vencido' ? 'bg-red-500/5 hover:bg-red-500/10'
