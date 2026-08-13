@@ -18,6 +18,18 @@ function formatDateBR(dateStr?: string): string {
   const [y, m, d] = dateStr.slice(0, 10).split('-')
   return y && m && d ? `${d}-${m}-${y}` : dateStr
 }
+function statusVencimento(vencimento?: string): 'vencido' | 'proximo' | null {
+  if (!vencimento) return null
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  const limite = new Date(hoje)
+  limite.setDate(limite.getDate() + 5)
+  const [y, m, d] = vencimento.slice(0, 10).split('-').map(Number)
+  const venc = new Date(y, m - 1, d)
+  if (venc < hoje) return 'vencido'
+  if (venc <= limite) return 'proximo'
+  return null
+}
 
 function getStatus(n: any) {
   if (!n.protocolo_id) {
@@ -241,8 +253,13 @@ export default function RelatorioPage() {
             )}
             {notasPaginadas.map((n: any) => {
               const status = getStatus(n)
+              const venc = statusVencimento(n.vencimento)
               return (
-                <tr key={n.id} className="hover:bg-slate-800/30 transition-colors">
+                <tr key={n.id} className={`transition-colors ${
+                  venc === 'vencido' ? 'bg-red-500/5 hover:bg-red-500/10'
+                  : venc === 'proximo' ? 'bg-amber-500/5 hover:bg-amber-500/10'
+                  : 'hover:bg-slate-800/30'
+                }`}>
                   <td className="px-4 py-3 text-sm text-white font-medium">{n.numero}</td>
                   <td className="px-4 py-3 text-xs text-slate-400 max-w-[160px] truncate" title={n.emissor_nome}>{n.emissor_nome}</td>
                   <td className="px-4 py-3 text-xs text-slate-300">{n.fazenda_nome || n.ie_tomador || '—'}</td>
@@ -257,7 +274,11 @@ export default function RelatorioPage() {
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-400">{formatDateBR(n.data_recebimento) || '—'}</td>
                   <td className="px-4 py-3 text-xs text-slate-300">{n.pedidos || '—'}</td>
-                  <td className="px-4 py-3 text-xs text-slate-300">{n.vencimento ? formatDateBR(n.vencimento) : '—'}</td>
+                  <td className={`px-4 py-3 text-xs font-semibold ${
+                    venc === 'vencido' ? 'text-red-400'
+                    : venc === 'proximo' ? 'text-amber-400'
+                    : 'text-slate-300 font-normal'
+                  }`}>{n.vencimento ? formatDateBR(n.vencimento) : '—'}</td>
                   <td className="px-4 py-3 text-xs text-slate-300">{n.responsavel_nome || '—'}</td>
                   <td className="px-4 py-3 text-xs text-slate-400">{formatDateBR(n.concluida_em) || '—'}</td>
                   <td className="px-4 py-3 whitespace-nowrap">

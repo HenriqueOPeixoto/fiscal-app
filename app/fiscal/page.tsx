@@ -19,6 +19,18 @@ function ultimoDiaMesAtual(): string {
   const d = new Date()
   return formatDate(new Date(d.getFullYear(), d.getMonth() + 1, 0))
 }
+function statusVencimento(vencimento?: string): 'vencido' | 'proximo' | null {
+  if (!vencimento) return null
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  const limite = new Date(hoje)
+  limite.setDate(limite.getDate() + 5)
+  const [y, m, d] = vencimento.slice(0, 10).split('-').map(Number)
+  const venc = new Date(y, m - 1, d)
+  if (venc < hoje) return 'vencido'
+  if (venc <= limite) return 'proximo'
+  return null
+}
 
 export default function FiscalPage() {
   const { data: session } = useSession()
@@ -330,8 +342,14 @@ export default function FiscalPage() {
                 </td>
               </tr>
             )}
-            {protocolosPaginados.map((p: any) => (
-              <tr key={p.id} className="hover:bg-slate-800/30 transition-colors">
+            {protocolosPaginados.map((p: any) => {
+              const venc = statusVencimento(p.vencimento)
+              return (
+              <tr key={p.id} className={`transition-colors ${
+                venc === 'vencido' ? 'bg-red-500/5 hover:bg-red-500/10'
+                : venc === 'proximo' ? 'bg-amber-500/5 hover:bg-amber-500/10'
+                : 'hover:bg-slate-800/30'
+              }`}>
                 <td className="px-4 py-3 text-sm text-white font-medium">{p.numero}</td>
                 <td className="px-4 py-3 text-xs text-slate-400 max-w-[120px] truncate" title={p.emissor_nome}>{p.emissor_nome}</td>
                 <td className="px-4 py-3 text-xs text-slate-300">{p.fazenda_nome || p.ie_tomador}</td>
@@ -342,7 +360,11 @@ export default function FiscalPage() {
                 <td className="px-4 py-3 text-xs text-slate-400">{formatDateBR(p.data_recebimento)}</td>
                 <td className="px-4 py-3 text-xs text-slate-300">{p.forma_pagamento || '—'}</td>
                 <td className="px-4 py-3 text-xs text-slate-300">{p.pedidos || '—'}</td>
-                <td className="px-4 py-3 text-xs text-slate-300">{p.vencimento ? formatDateBR(p.vencimento) : '—'}</td>
+                <td className={`px-4 py-3 text-xs font-semibold ${
+                  venc === 'vencido' ? 'text-red-400'
+                  : venc === 'proximo' ? 'text-amber-400'
+                  : 'text-slate-300 font-normal'
+                }`}>{p.vencimento ? formatDateBR(p.vencimento) : '—'}</td>
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     p.concluida
@@ -384,7 +406,8 @@ export default function FiscalPage() {
                   )}
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
 
