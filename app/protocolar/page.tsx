@@ -301,7 +301,7 @@ export default function ProtocolarPage() {
 
       autoTable(doc, {
         startY: 26,
-        head: [['Número', 'Emissor', 'Fazenda', 'Valor', 'Emissão', 'Responsável', 'Forma Pag.', 'Vencimento']],
+        head: [['Número', 'Emissor', 'Fazenda', 'Valor', 'Emissão', 'Observação', 'Forma Pag.', 'Vencimento']],
         body: notasOrdenadas.map((n: any) => [
           n.numero,
           n.emissor_nome,
@@ -386,7 +386,7 @@ export default function ProtocolarPage() {
           { key: 'numero', placeholder: 'Nº nota', width: 'w-28' },
           { key: 'emissor', placeholder: 'Emissor', width: 'w-48' },
           { key: 'fazenda', placeholder: 'Fazenda', width: 'w-36' },
-          { key: 'responsavel', placeholder: 'Responsável Pagamento', width: 'w-40' },
+          { key: 'responsavel', placeholder: 'Observação', width: 'w-40' },
         ].map(({ key, placeholder, width }) => (
           <input
             key={key}
@@ -586,13 +586,13 @@ export default function ProtocolarPage() {
                   {/* Row 2: per-note payment fields — one button saves everything below at once */}
                   <div className="mt-2.5 ml-8 flex gap-3 flex-wrap items-end">
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">Responsável Pagamento</label>
+                      <label className="block text-xs text-slate-500 mb-1">Observação</label>
                       <input
                         type="text"
                         value={extra.responsavel}
                         onChange={e => setExtra(nota.id, { responsavel: e.target.value })}
                         onKeyDown={e => { if (e.key === 'Enter') salvarNota(nota.id) }}
-                        placeholder="Ex: BRUNA"
+                        placeholder="Observação"
                         className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 w-36
                                    placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                       />

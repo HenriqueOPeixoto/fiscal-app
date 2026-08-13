@@ -121,6 +121,7 @@ export default function FiscalPage() {
       case 'data_recebimento': return p.data_recebimento || ''
       case 'vencimento': return p.vencimento || ''
       case 'criado_por_nome': return p.criado_por_nome || ''
+      case 'responsavel_forma_pag': return p.responsavel_forma_pag || ''
       default: return ''
     }
   }
@@ -315,6 +316,7 @@ export default function FiscalPage() {
                 { label: 'Valor', key: 'valor' },
                 { label: 'Data Emissão', key: 'dt_emissao' },
                 { label: 'Data Rec.', key: 'data_recebimento' },
+                { label: 'Observação', key: 'responsavel_forma_pag' },
                 { label: 'Forma Pag.', key: null },
                 { label: 'Pedidos', key: null },
                 { label: 'Vencimento', key: 'vencimento' },
@@ -340,7 +342,7 @@ export default function FiscalPage() {
           <tbody className="divide-y divide-slate-800">
             {!loading && protocolosFiltrados.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-4 py-10 text-center text-slate-500 text-sm">
+                <td colSpan={13} className="px-4 py-10 text-center text-slate-500 text-sm">
                   {protocolos.length === 0 ? 'Nenhuma nota encontrada' : 'Nenhuma nota corresponde aos filtros'}
                 </td>
               </tr>
@@ -361,6 +363,7 @@ export default function FiscalPage() {
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-400">{formatDateBR(p.dt_emissao)}</td>
                 <td className="px-4 py-3 text-xs text-slate-400">{formatDateBR(p.data_recebimento)}</td>
+                <td className="px-4 py-3 text-xs text-slate-300 max-w-[140px] truncate" title={p.responsavel_forma_pag}>{p.responsavel_forma_pag || '—'}</td>
                 <td className="px-4 py-3 text-xs text-slate-300">{p.forma_pagamento || '—'}</td>
                 <td className="px-4 py-3 text-xs text-slate-300">{p.pedidos || '—'}</td>
                 <td className={`px-4 py-3 text-xs font-semibold ${

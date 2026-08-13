@@ -50,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     registrar('ie_tomador', 'IE', ieTomador, atual.ie_tomador)
   }
   if (body.responsavelPagamento !== undefined) {
-    registrar('responsavel_pagamento', 'Responsável Pagamento', (body.responsavelPagamento ?? '').trim() || null, atual.responsavel_pagamento)
+    registrar('responsavel_pagamento', 'Observação', (body.responsavelPagamento ?? '').trim() || null, atual.responsavel_pagamento)
   }
   if (body.formaPagamento !== undefined) {
     registrar('forma_pagamento', 'Forma de Pagamento', (body.formaPagamento ?? '').trim() || null, atual.forma_pagamento)
