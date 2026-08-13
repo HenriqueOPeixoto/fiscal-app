@@ -120,6 +120,7 @@ export default function FiscalPage() {
       case 'dt_emissao': return p.dt_emissao || ''
       case 'data_recebimento': return p.data_recebimento || ''
       case 'vencimento': return p.vencimento || ''
+      case 'criado_por_nome': return p.criado_por_nome || ''
       default: return ''
     }
   }
@@ -161,7 +162,7 @@ export default function FiscalPage() {
   }
 
   return (
-    <div className="p-8 max-w-7xl">
+    <div className="p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-white">Lançamentos Fiscais</h1>
         <p className="text-slate-400 text-sm mt-1">Gerencie as notas protocoladas pelo departamento de compras</p>
@@ -303,6 +304,7 @@ export default function FiscalPage() {
 
       {/* Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-800">
@@ -316,6 +318,7 @@ export default function FiscalPage() {
                 { label: 'Forma Pag.', key: null },
                 { label: 'Pedidos', key: null },
                 { label: 'Vencimento', key: 'vencimento' },
+                { label: 'Protocolado por', key: 'criado_por_nome' },
                 { label: 'Status', key: null },
                 { label: 'Ação', key: null },
               ].map(({ label, key }) => (
@@ -337,7 +340,7 @@ export default function FiscalPage() {
           <tbody className="divide-y divide-slate-800">
             {!loading && protocolosFiltrados.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-10 text-center text-slate-500 text-sm">
+                <td colSpan={12} className="px-4 py-10 text-center text-slate-500 text-sm">
                   {protocolos.length === 0 ? 'Nenhuma nota encontrada' : 'Nenhuma nota corresponde aos filtros'}
                 </td>
               </tr>
@@ -365,6 +368,7 @@ export default function FiscalPage() {
                   : venc === 'proximo' ? 'text-amber-400'
                   : 'text-slate-300 font-normal'
                 }`}>{p.vencimento ? formatDateBR(p.vencimento) : '—'}</td>
+                <td className="px-4 py-3 text-xs text-slate-300">{p.criado_por_nome || '—'}</td>
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     p.concluida
@@ -410,6 +414,7 @@ export default function FiscalPage() {
             })}
           </tbody>
         </table>
+        </div>
 
         {!loading && protocolosOrdenados.length > PAGE_SIZE && (
           <div className="px-5 py-3 border-t border-slate-800 flex items-center justify-between">

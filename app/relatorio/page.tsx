@@ -87,6 +87,7 @@ export default function RelatorioPage() {
       case 'pedidos': return n.pedidos || ''
       case 'vencimento': return n.vencimento || ''
       case 'status': return getStatus(n).label
+      case 'criado_por_nome': return n.criado_por_nome || ''
       default: return ''
     }
   }
@@ -229,6 +230,7 @@ export default function RelatorioPage() {
                 { label: 'Data Protocolo', key: null },
                 { label: 'Pedido', key: 'pedidos' },
                 { label: 'Vencimento', key: 'vencimento' },
+                { label: 'Protocolado por', key: 'criado_por_nome' },
                 { label: 'Responsável Lanç.', key: null },
                 { label: 'Concluída em', key: null },
                 { label: '', key: null },
@@ -246,7 +248,7 @@ export default function RelatorioPage() {
           <tbody className="divide-y divide-slate-800">
             {!loading && notasFiltradas.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-4 py-10 text-center text-slate-500 text-sm">
+                <td colSpan={13} className="px-4 py-10 text-center text-slate-500 text-sm">
                   {notas.length === 0 ? 'Nenhuma nota encontrada' : 'Nenhuma nota corresponde aos filtros'}
                 </td>
               </tr>
@@ -279,6 +281,7 @@ export default function RelatorioPage() {
                     : venc === 'proximo' ? 'text-amber-400'
                     : 'text-slate-300 font-normal'
                   }`}>{n.vencimento ? formatDateBR(n.vencimento) : '—'}</td>
+                  <td className="px-4 py-3 text-xs text-slate-300">{n.criado_por_nome || '—'}</td>
                   <td className="px-4 py-3 text-xs text-slate-300">{n.responsavel_nome || '—'}</td>
                   <td className="px-4 py-3 text-xs text-slate-400">{formatDateBR(n.concluida_em) || '—'}</td>
                   <td className="px-4 py-3 whitespace-nowrap">

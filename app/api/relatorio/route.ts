@@ -14,12 +14,14 @@ export async function GET(req: NextRequest) {
       f.nome as fazenda_nome,
       p.id as protocolo_id, p.data_recebimento,
       lf.id as lancamento_id, lf.concluida, lf.concluida_em,
-      ul.nome as responsavel_nome
+      ul.nome as responsavel_nome,
+      up.nome as protocolado_por_nome
     FROM notas n
     LEFT JOIN fazendas f ON f.ie_tomador = n.ie_tomador
     LEFT JOIN protocolos p ON p.nota_id = n.id
     LEFT JOIN lancamentos_fiscal lf ON lf.protocolo_id = p.id
     LEFT JOIN usuarios ul ON ul.id = lf.responsavel_id
+    LEFT JOIN usuarios up ON up.id = p.criado_por_id
     ORDER BY n.importado_em DESC
   `)
   return NextResponse.json(result.rows)
