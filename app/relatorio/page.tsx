@@ -84,6 +84,7 @@ export default function RelatorioPage() {
       case 'fazenda': return n.fazenda_nome || n.ie_tomador || ''
       case 'valor': return Number(n.valor) || 0
       case 'dt_emissao': return n.dt_emissao || ''
+      case 'forma_pagamento': return n.forma_pagamento || ''
       case 'pedidos': return n.pedidos || ''
       case 'vencimento': return n.vencimento || ''
       case 'status': return getStatus(n).label
@@ -228,6 +229,7 @@ export default function RelatorioPage() {
                 { label: 'Emissão', key: 'dt_emissao' },
                 { label: 'Status', key: 'status' },
                 { label: 'Data Protocolo', key: null },
+                { label: 'Forma Pag.', key: 'forma_pagamento' },
                 { label: 'Pedido', key: 'pedidos' },
                 { label: 'Vencimento', key: 'vencimento' },
                 { label: 'Protocolado por', key: 'criado_por_nome' },
@@ -248,7 +250,7 @@ export default function RelatorioPage() {
           <tbody className="divide-y divide-slate-800">
             {!loading && notasFiltradas.length === 0 && (
               <tr>
-                <td colSpan={13} className="px-4 py-10 text-center text-slate-500 text-sm">
+                <td colSpan={14} className="px-4 py-10 text-center text-slate-500 text-sm">
                   {notas.length === 0 ? 'Nenhuma nota encontrada' : 'Nenhuma nota corresponde aos filtros'}
                 </td>
               </tr>
@@ -275,6 +277,7 @@ export default function RelatorioPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-400">{formatDateBR(n.data_recebimento) || '—'}</td>
+                  <td className="px-4 py-3 text-xs text-slate-300">{n.forma_pagamento || '—'}</td>
                   <td className="px-4 py-3 text-xs text-slate-300">{n.pedidos || '—'}</td>
                   <td className={`px-4 py-3 text-xs font-semibold ${
                     venc === 'vencido' ? 'text-red-400'

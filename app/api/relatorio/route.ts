@@ -10,12 +10,13 @@ export async function GET(req: NextRequest) {
   const result = await client.execute(`
     SELECT
       n.id, n.numero, n.valor, n.emissor_nome, n.ie_tomador, n.dt_emissao, n.pedidos, n.vencimento,
+      n.forma_pagamento,
       n.estorno_justificativa, n.estorno_em, n.estornada_por,
       f.nome as fazenda_nome,
       p.id as protocolo_id, p.data_recebimento,
       lf.id as lancamento_id, lf.concluida, lf.concluida_em,
       ul.nome as responsavel_nome,
-      up.nome as protocolado_por_nome
+      up.nome as criado_por_nome
     FROM notas n
     LEFT JOIN fazendas f ON f.ie_tomador = n.ie_tomador
     LEFT JOIN protocolos p ON p.nota_id = n.id
