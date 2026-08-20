@@ -636,6 +636,7 @@ export default function ProtocolarPage() {
                         <option value="TRANSFERÊNCIA">TRANSFERÊNCIA</option>
                         <option value="REMESSA ENTREGA FUTURA">REMESSA ENTREGA FUTURA</option>
                         <option value="PAGA">PAGA</option>
+                        <option value="GARANTIA">GARANTIA</option>
                       </select>
                     </div>
                     <div>
