@@ -13,7 +13,9 @@ interface Stats {
 export default function DashboardPage() {
   const { data: session } = useSession()
   const [protocolos, setProtocolos] = useState<any[]>([])
+  const [semProtocolo, setSemProtocolo] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingSemProtocolo, setLoadingSemProtocolo] = useState(true)
 
   const mesAtual = new Date().toISOString().slice(0, 7)
 
@@ -21,13 +23,16 @@ export default function DashboardPage() {
     fetch(`/api/protocolo?mes=${mesAtual}`)
       .then(r => r.json())
       .then(data => { setProtocolos(data); setLoading(false) })
+    fetch('/api/notas?semProtocolo=true')
+      .then(r => r.json())
+      .then(data => { setSemProtocolo(data.length); setLoadingSemProtocolo(false) })
   }, [])
 
   const stats: Stats = {
     totalProtocolos: protocolos.length,
     pendentes: protocolos.filter(p => !p.concluida).length,
     concluidas: protocolos.filter(p => p.concluida).length,
-    semProtocolo: 0,
+    semProtocolo,
   }
 
   const pct = stats.totalProtocolos > 0
@@ -46,7 +51,12 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        <StatCard
+          label="Pendentes de Protocolo"
+          value={loadingSemProtocolo ? '...' : stats.semProtocolo}
+          color="white"
+        />
         <StatCard
           label="Total Protocolados"
           value={loading ? '...' : stats.totalProtocolos}
@@ -126,6 +136,7 @@ function StatCard({ label, value, color }: { label: string; value: any; color: s
     slate: 'text-slate-300',
     amber: 'text-amber-400',
     emerald: 'text-emerald-400',
+    white: 'text-white',
   }
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
