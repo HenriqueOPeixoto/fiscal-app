@@ -10,23 +10,40 @@ interface Stats {
   semProtocolo: number
 }
 
+function ultimoDiaDoMes(mes: string): string {
+  const [y, m] = mes.split('-').map(Number)
+  return `${mes}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`
+}
+
 export default function DashboardPage() {
   const { data: session } = useSession()
   const [protocolos, setProtocolos] = useState<any[]>([])
-  const [semProtocolo, setSemProtocolo] = useState(0)
+  const [notasSemProtocolo, setNotasSemProtocolo] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingSemProtocolo, setLoadingSemProtocolo] = useState(true)
 
   const mesAtual = new Date().toISOString().slice(0, 7)
+  const [filtroMes, setFiltroMes] = useState(mesAtual)
 
   useEffect(() => {
-    fetch(`/api/protocolo?mes=${mesAtual}`)
+    setLoading(true)
+    fetch(`/api/protocolo?mes=${filtroMes}`)
       .then(r => r.json())
       .then(data => { setProtocolos(data); setLoading(false) })
+  }, [filtroMes])
+
+  useEffect(() => {
     fetch('/api/notas?semProtocolo=true')
       .then(r => r.json())
-      .then(data => { setSemProtocolo(data.length); setLoadingSemProtocolo(false) })
+      .then(data => { setNotasSemProtocolo(data); setLoadingSemProtocolo(false) })
   }, [])
+
+  const inicioMes = `${filtroMes}-01`
+  const fimMes = ultimoDiaDoMes(filtroMes)
+  const semProtocolo = notasSemProtocolo.filter(n => {
+    const dtEmissao = n.dt_emissao?.slice(0, 10) || ''
+    return dtEmissao >= inicioMes && dtEmissao <= fimMes
+  }).length
 
   const stats: Stats = {
     totalProtocolos: protocolos.length,
@@ -43,11 +60,25 @@ export default function DashboardPage() {
 
   return (
     <div className="p-8 max-w-5xl">
-      <div className="mb-8">
+      <div className="mb-8 flex items-end justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-semibold text-white">Olá, {session?.user?.name?.split(' ')[0]} 👋</h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Mês atual — {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-        </p>
+        <div className="flex items-center gap-2">
+          <input
+            type="month"
+            value={filtroMes}
+            onChange={e => setFiltroMes(e.target.value)}
+            className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
+                       focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          />
+          {filtroMes !== mesAtual && (
+            <button
+              onClick={() => setFiltroMes(mesAtual)}
+              className="text-xs text-slate-500 hover:text-slate-300 underline"
+            >
+              Mês atual
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
