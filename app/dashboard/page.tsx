@@ -15,6 +15,18 @@ function ultimoDiaDoMes(mes: string): string {
   return `${mes}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`
 }
 
+const FILTROS_STORAGE_KEY = 'dashboard-filtros'
+
+function lerFiltrosSalvos(): any {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = sessionStorage.getItem(FILTROS_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
 export default function DashboardPage() {
   const { data: session } = useSession()
   const [protocolos, setProtocolos] = useState<any[]>([])
@@ -23,13 +35,19 @@ export default function DashboardPage() {
   const [loadingSemProtocolo, setLoadingSemProtocolo] = useState(true)
 
   const mesAtual = new Date().toISOString().slice(0, 7)
-  const [filtroMes, setFiltroMes] = useState(mesAtual)
+  const [filtroMes, setFiltroMes] = useState<string>(() => lerFiltrosSalvos().filtroMes ?? mesAtual)
 
   useEffect(() => {
     setLoading(true)
     fetch(`/api/protocolo?mes=${filtroMes}`)
       .then(r => r.json())
       .then(data => { setProtocolos(data); setLoading(false) })
+  }, [filtroMes])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(FILTROS_STORAGE_KEY, JSON.stringify({ filtroMes }))
+    } catch {}
   }, [filtroMes])
 
   useEffect(() => {

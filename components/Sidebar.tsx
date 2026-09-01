@@ -141,7 +141,7 @@ export default function Sidebar() {
             )}
           </div>
           <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={() => { sessionStorage.clear(); signOut({ callbackUrl: '/login' }) }}
             title={!expanded ? 'Sair' : undefined}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400
                        hover:text-white hover:bg-slate-800 transition-all whitespace-nowrap ${

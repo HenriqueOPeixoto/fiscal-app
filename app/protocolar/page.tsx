@@ -29,6 +29,18 @@ function formatDateBR(dateStr?: string): string {
   return y && m && d ? `${d}-${m}-${y}` : dateStr
 }
 
+const FILTROS_STORAGE_KEY = 'protocolar-filtros'
+
+function lerFiltrosSalvos(): any {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = sessionStorage.getItem(FILTROS_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
 export default function ProtocolarPage() {
   const { data: session } = useSession()
   const [notas, setNotas] = useState<any[]>([])
@@ -43,11 +55,14 @@ export default function ProtocolarPage() {
   const [rowState, setRowState] = useState<Record<string, 'saving' | 'saved' | 'erro'>>({})
   const [fazendas, setFazendas] = useState<{ id: string; nome: string; ie_tomador: string }[]>([])
   const [ieDraft, setIeDraft] = useState<Record<string, string>>({})
-  const [filtros, setFiltros] = useState({
+  const [filtros, setFiltros] = useState<{
+    numero: string; emissor: string; fazenda: string; responsavel: string
+    dtEmissaoInicio: string; dtEmissaoFim: string
+  }>(() => lerFiltrosSalvos().filtros ?? {
     numero: '', emissor: '', fazenda: '', responsavel: '',
     dtEmissaoInicio: primeiroDiaMesAtual(), dtEmissaoFim: ultimoDiaMesAtual(),
   })
-  const [somenteEstornadas, setSomenteEstornadas] = useState(false)
+  const [somenteEstornadas, setSomenteEstornadas] = useState<boolean>(() => !!lerFiltrosSalvos().somenteEstornadas)
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' })
   const [cancelandoNota, setCancelandoNota] = useState<{ id: string; numero: string } | null>(null)
   const [cancelarStatus, setCancelarStatus] = useState('Cancelamento de NF-e homologado')
@@ -86,6 +101,12 @@ export default function ProtocolarPage() {
     fetch('/api/data-servidor').then(r => r.json()).then(d => setDataRecebimento(d.hoje))
     fetch('/api/fazendas').then(r => r.json()).then(setFazendas)
   }, [])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(FILTROS_STORAGE_KEY, JSON.stringify({ filtros, somenteEstornadas }))
+    } catch {}
+  }, [filtros, somenteEstornadas])
 
   if (perfil === 'fiscal') {
     return (

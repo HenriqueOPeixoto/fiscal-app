@@ -19,6 +19,18 @@ function ultimoDiaMesAtual(): string {
   const d = new Date()
   return formatDate(new Date(d.getFullYear(), d.getMonth() + 1, 0))
 }
+
+const FILTROS_STORAGE_KEY = 'fiscal-filtros'
+
+function lerFiltrosSalvos(): any {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = sessionStorage.getItem(FILTROS_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
 function statusVencimento(vencimento?: string): 'vencido' | 'proximo' | null {
   if (!vencimento) return null
   const hoje = new Date()
@@ -36,9 +48,13 @@ export default function FiscalPage() {
   const { data: session } = useSession()
   const [protocolos, setProtocolos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [filtroStatus, setFiltroStatus] = useState<'todas' | 'pendente' | 'concluida'>('pendente')
-  const [filtroMes, setFiltroMes] = useState(new Date().toISOString().slice(0, 7))
-  const [filtros, setFiltros] = useState({
+  const [filtroStatus, setFiltroStatus] = useState<'todas' | 'pendente' | 'concluida'>(() => lerFiltrosSalvos().filtroStatus ?? 'pendente')
+  const [filtroMes, setFiltroMes] = useState(() => lerFiltrosSalvos().filtroMes ?? new Date().toISOString().slice(0, 7))
+  const [filtros, setFiltros] = useState<{
+    numero: string; emissor: string; fazenda: string
+    dtEmissaoInicio: string; dtEmissaoFim: string
+    vencimentoInicio: string; vencimentoFim: string
+  }>(() => lerFiltrosSalvos().filtros ?? {
     numero: '', emissor: '', fazenda: '',
     dtEmissaoInicio: primeiroDiaMesAtual(), dtEmissaoFim: ultimoDiaMesAtual(),
     vencimentoInicio: '', vencimentoFim: '',
@@ -63,6 +79,12 @@ export default function FiscalPage() {
   }
 
   useEffect(() => { carregar() }, [filtroMes, filtroStatus])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(FILTROS_STORAGE_KEY, JSON.stringify({ filtroStatus, filtroMes, filtros }))
+    } catch {}
+  }, [filtroStatus, filtroMes, filtros])
 
   async function concluir(protocoloId: string) {
     setConcluindo(protocoloId)

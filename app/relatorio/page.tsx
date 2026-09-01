@@ -31,6 +31,18 @@ function statusVencimento(vencimento?: string): 'vencido' | 'proximo' | null {
   return null
 }
 
+const FILTROS_STORAGE_KEY = 'relatorio-filtros'
+
+function lerFiltrosSalvos(): any {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = sessionStorage.getItem(FILTROS_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
 function getStatus(n: any) {
   if (!n.protocolo_id) {
     if (n.estorno_justificativa) return { label: 'Estornada', cor: 'bg-red-500/10 text-red-400' }
@@ -43,12 +55,16 @@ function getStatus(n: any) {
 export default function RelatorioPage() {
   const [notas, setNotas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [filtros, setFiltros] = useState({
+  const [filtros, setFiltros] = useState<{
+    numero: string; emissor: string; fazenda: string; pedido: string
+    dtEmissaoInicio: string; dtEmissaoFim: string
+    vencimentoInicio: string; vencimentoFim: string
+  }>(() => lerFiltrosSalvos().filtros ?? {
     numero: '', emissor: '', fazenda: '', pedido: '',
     dtEmissaoInicio: primeiroDiaMesAtual(), dtEmissaoFim: ultimoDiaMesAtual(),
     vencimentoInicio: '', vencimentoFim: '',
   })
-  const [somenteEstornadas, setSomenteEstornadas] = useState(false)
+  const [somenteEstornadas, setSomenteEstornadas] = useState<boolean>(() => !!lerFiltrosSalvos().somenteEstornadas)
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' })
   const [pagina, setPagina] = useState(1)
   const PAGE_SIZE = 25
@@ -57,6 +73,12 @@ export default function RelatorioPage() {
   useEffect(() => {
     fetch('/api/relatorio').then(r => r.json()).then(data => { setNotas(data); setLoading(false) })
   }, [])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(FILTROS_STORAGE_KEY, JSON.stringify({ filtros, somenteEstornadas }))
+    } catch {}
+  }, [filtros, somenteEstornadas])
 
   const notasFiltradas = notas.filter(n => {
     if (filtros.numero && !n.numero.toLowerCase().includes(filtros.numero.toLowerCase())) return false
