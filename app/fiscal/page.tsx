@@ -49,7 +49,6 @@ export default function FiscalPage() {
   const [protocolos, setProtocolos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filtroStatus, setFiltroStatus] = useState<'todas' | 'pendente' | 'concluida'>(() => lerFiltrosSalvos().filtroStatus ?? 'pendente')
-  const [filtroMes, setFiltroMes] = useState(() => lerFiltrosSalvos().filtroMes ?? new Date().toISOString().slice(0, 7))
   const [filtros, setFiltros] = useState<{
     numero: string; emissor: string; fazenda: string
     dtEmissaoInicio: string; dtEmissaoFim: string
@@ -72,19 +71,19 @@ export default function FiscalPage() {
 
   async function carregar() {
     setLoading(true)
-    const params = new URLSearchParams({ mes: filtroMes, status: filtroStatus })
+    const params = new URLSearchParams({ status: filtroStatus })
     const data = await fetch(`/api/protocolo?${params}`).then(r => r.json())
     setProtocolos(data)
     setLoading(false)
   }
 
-  useEffect(() => { carregar() }, [filtroMes, filtroStatus])
+  useEffect(() => { carregar() }, [filtroStatus])
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(FILTROS_STORAGE_KEY, JSON.stringify({ filtroStatus, filtroMes, filtros }))
+      sessionStorage.setItem(FILTROS_STORAGE_KEY, JSON.stringify({ filtroStatus, filtros }))
     } catch {}
-  }, [filtroStatus, filtroMes, filtros])
+  }, [filtroStatus, filtros])
 
   async function concluir(protocoloId: string) {
     setConcluindo(protocoloId)
@@ -165,7 +164,7 @@ export default function FiscalPage() {
 
   useEffect(() => {
     setPagina(1)
-  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.dtEmissaoInicio, filtros.dtEmissaoFim, filtros.vencimentoInicio, filtros.vencimentoFim, sortConfig.key, sortConfig.direction, filtroMes, filtroStatus])
+  }, [filtros.numero, filtros.emissor, filtros.fazenda, filtros.dtEmissaoInicio, filtros.dtEmissaoFim, filtros.vencimentoInicio, filtros.vencimentoFim, sortConfig.key, sortConfig.direction, filtroStatus])
 
   function handleSort(key: string) {
     setSortConfig(prev => prev.key === key
@@ -193,13 +192,6 @@ export default function FiscalPage() {
 
       {/* Filtros */}
       <div className="flex gap-3 mb-3 flex-wrap items-center">
-        <input
-          type="month"
-          value={filtroMes}
-          onChange={e => setFiltroMes(e.target.value)}
-          className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2
-                     focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-        />
         {(['todas', 'pendente', 'concluida'] as const).map(s => (
           <button
             key={s}
