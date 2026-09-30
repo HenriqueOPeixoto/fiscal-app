@@ -32,6 +32,8 @@ function statusVencimento(vencimento?: string): 'vencido' | 'proximo' | null {
 }
 
 const FILTROS_STORAGE_KEY = 'relatorio-filtros'
+// Pra anunciar outra novidade no futuro, basta trocar o sufixo da chave
+const NOVIDADE_STORAGE_KEY = 'novidade-vista:relatorio-pdf-numero-nota'
 
 function lerFiltrosSalvos(): any {
   if (typeof window === 'undefined') return {}
@@ -71,9 +73,24 @@ export default function RelatorioPage() {
   const [verJustificativa, setVerJustificativa] = useState<any>(null)
   const [verPdf, setVerPdf] = useState<{ nota: any; url?: string; erro?: string; carregando: boolean } | null>(null)
 
+  const [mostrarNovidade, setMostrarNovidade] = useState(false)
+
   useEffect(() => {
     fetch('/api/relatorio').then(r => r.json()).then(data => { setNotas(data); setLoading(false) })
   }, [])
+
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(NOVIDADE_STORAGE_KEY)) setMostrarNovidade(true)
+    } catch {}
+  }, [])
+
+  function fecharNovidade() {
+    setMostrarNovidade(false)
+    try {
+      localStorage.setItem(NOVIDADE_STORAGE_KEY, '1')
+    } catch {}
+  }
 
   useEffect(() => {
     try {
@@ -395,6 +412,33 @@ export default function RelatorioPage() {
           </div>
         )}
       </div>
+
+      {/* Modal: novidade (PDF pelo número da nota) */}
+      {mostrarNovidade && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={fecharNovidade}>
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md shadow-2xl"
+          >
+            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
+              Novidade!
+            </span>
+            <h3 className="text-white font-semibold text-base mt-3 mb-2">Visualize o PDF da nota</h3>
+            <p className="text-slate-400 text-sm mb-6">
+              Agora você pode clicar no <span className="text-white font-medium">número da nota</span> (coluna NF)
+              para abrir o PDF dela aqui mesmo, sem sair do relatório.
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={fecharNovidade}
+                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-lg px-5 py-2 text-sm transition-all"
+              >
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: PDF da nota */}
       {verPdf && (
