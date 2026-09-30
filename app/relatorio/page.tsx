@@ -69,6 +69,7 @@ export default function RelatorioPage() {
   const [pagina, setPagina] = useState(1)
   const PAGE_SIZE = 25
   const [verJustificativa, setVerJustificativa] = useState<any>(null)
+  const [verPdf, setVerPdf] = useState<{ nota: any; url?: string; erro?: string; carregando: boolean } | null>(null)
 
   useEffect(() => {
     fetch('/api/relatorio').then(r => r.json()).then(data => { setNotas(data); setLoading(false) })
@@ -79,6 +80,41 @@ export default function RelatorioPage() {
       sessionStorage.setItem(FILTROS_STORAGE_KEY, JSON.stringify({ filtros, somenteEstornadas }))
     } catch {}
   }, [filtros, somenteEstornadas])
+
+  async function abrirPdf(nota: any) {
+    setVerPdf({ nota, carregando: true })
+    try {
+      const r = await fetch(`/api/notas/${nota.id}/pdf`)
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}))
+        setVerPdf(prev => prev?.nota.id === nota.id ? { nota, carregando: false, erro: data.error || 'Erro ao carregar o PDF' } : prev)
+        return
+      }
+      const url = URL.createObjectURL(await r.blob())
+      setVerPdf(prev => {
+        // modal fechado (ou outra nota aberta) enquanto o PDF carregava — descarta o arquivo
+        if (prev?.nota.id !== nota.id) { URL.revokeObjectURL(url); return prev }
+        return { nota, carregando: false, url }
+      })
+    } catch {
+      setVerPdf(prev => prev?.nota.id === nota.id ? { nota, carregando: false, erro: 'Erro ao carregar o PDF' } : prev)
+    }
+  }
+
+  function fecharPdf() {
+    setVerPdf(prev => {
+      if (prev?.url) URL.revokeObjectURL(prev.url)
+      return null
+    })
+  }
+
+  const pdfAberto = !!verPdf
+  useEffect(() => {
+    if (!pdfAberto) return
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') fecharPdf() }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [pdfAberto])
 
   const notasFiltradas = notas.filter(n => {
     if (filtros.numero && !n.numero.toLowerCase().includes(filtros.numero.toLowerCase())) return false
@@ -286,7 +322,15 @@ export default function RelatorioPage() {
                   : venc === 'proximo' ? 'bg-amber-500/5 hover:bg-amber-500/10'
                   : 'hover:bg-slate-800/30'
                 }`}>
-                  <td className="px-4 py-3 text-sm text-white font-medium">{n.numero}</td>
+                  <td className="px-4 py-3 text-sm text-white font-medium">
+                    <button
+                      onClick={() => abrirPdf(n)}
+                      title="Ver PDF da nota"
+                      className="hover:text-emerald-400 hover:underline underline-offset-2 cursor-pointer"
+                    >
+                      {n.numero}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-xs text-slate-400 max-w-[160px] truncate" title={n.emissor_nome}>{n.emissor_nome}</td>
                   <td className="px-4 py-3 text-xs text-slate-300">{n.fazenda_nome || n.ie_tomador || '—'}</td>
                   <td className="px-4 py-3 text-sm text-white">
@@ -351,6 +395,35 @@ export default function RelatorioPage() {
           </div>
         )}
       </div>
+
+      {/* Modal: PDF da nota */}
+      {verPdf && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={fecharPdf}>
+          <div
+            onClick={e => e.stopPropagation()}
+            className={`bg-slate-900 border border-slate-700 rounded-xl p-6 w-full shadow-2xl flex flex-col ${
+              verPdf.url ? 'max-w-5xl h-[90vh]' : 'max-w-md'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <p className="text-slate-400 text-sm">
+                NF <span className="text-white font-medium">{verPdf.nota.numero}</span> — {verPdf.nota.emissor_nome}
+              </p>
+              <button
+                onClick={fecharPdf}
+                className="px-4 py-2 text-sm text-slate-400 hover:text-white border border-slate-700 hover:border-slate-600 rounded-lg transition-all"
+              >
+                Fechar
+              </button>
+            </div>
+            {verPdf.carregando && <p className="text-sm text-slate-400 py-6 text-center">Carregando PDF...</p>}
+            {verPdf.erro && <p className="text-sm text-red-400 py-6 text-center">{verPdf.erro}</p>}
+            {verPdf.url && (
+              <iframe src={verPdf.url} title={`PDF NF ${verPdf.nota.numero}`} className="flex-1 w-full rounded-lg bg-white" />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal: justificativa do estorno */}
       {verJustificativa && (
