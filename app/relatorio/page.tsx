@@ -147,6 +147,8 @@ export default function RelatorioPage() {
       case 'vencimento': return n.vencimento || ''
       case 'status': return getStatus(n).label
       case 'criado_por_nome': return n.criado_por_nome || ''
+      case 'data_recebimento': return n.data_recebimento || ''
+      case 'concluida_em': return n.concluida_em || ''
       default: return ''
     }
   }
@@ -286,13 +288,13 @@ export default function RelatorioPage() {
                 { label: 'Valor', key: 'valor' },
                 { label: 'Emissão', key: 'dt_emissao' },
                 { label: 'Status', key: 'status' },
-                { label: 'Data Protocolo', key: null },
+                { label: 'Data Protocolo', key: 'data_recebimento' },
                 { label: 'Forma Pag.', key: 'forma_pagamento' },
                 { label: 'Pedido', key: 'pedidos' },
                 { label: 'Vencimento', key: 'vencimento' },
                 { label: 'Protocolado por', key: 'criado_por_nome' },
                 { label: 'Responsável Lanç.', key: null },
-                { label: 'Concluída em', key: null },
+                { label: 'Concluída em', key: 'concluida_em' },
                 { label: '', key: null },
               ].map(({ label, key }) => (
                 <th key={label} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
